@@ -1,5 +1,8 @@
 PARAMS=
-NVCCFLAGS=-std=c++14
+
+#This arch and sm settings should be compatible with my notebook Geforce GTX 850M card.
+NVCCFLAGS=-std=c++14 --gpu-architecture=compute_50 --gpu-code=sm_50 
+
 NVCC=nvcc
 
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS}
@@ -9,4 +12,7 @@ HEADERS=mesh/fmesh.h
 
 
 test:
-	${CUDALINK} test.cu -o test.out
+	${CUDALINK} testing_class.cu -o test.out
+
+clean:
+	rm *.out
