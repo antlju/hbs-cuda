@@ -1,3 +1,37 @@
+
+
+
+/*
+/// Program to test error checking on API
+/// as well as include path in makefile
+
+/// At least the include works
+#include "error_wrap.cuh" /// Should include "./error_wrap/error_wrap.cuh"
+
+typedef int Int;
+typedef double Real;
+
+Int main()
+{
+	Real *x;
+	Int N = 32;
+	checkCuda(cudaMalloc((void**)&x,sizeof(Real)*N));
+	
+	
+	printf("Testing if include is working\n");
+	
+
+	return 0;
+}
+
+*/
+
+
+
+
+/// Some early test with classes
+/*
+
 #include <iostream>
 
 #define NGHOSTS 4
@@ -6,6 +40,9 @@
 
 typedef int Int;
 typedef double Real;
+
+
+
 
 template<class T, Int NG=4>
 class fMeshDevice
@@ -37,3 +74,4 @@ Int main()
 	std::cout << "OK COMPILED IT MAYBE COOL" << std::endl;
 
 }
+*/

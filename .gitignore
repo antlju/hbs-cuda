@@ -1,0 +1,51 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Simdata
+*.dat
+*.cvs
+*.csv
+simdata/
+*.stats
+
+# Plots
+*.jpg
+*.eps
+
+# Backups
+*.cpp~
+*.h~
+*.bak
+*.cuh~
+*#*
+*.cu~
