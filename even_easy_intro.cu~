@@ -1,0 +1,17 @@
+#include <iostream>
+
+#define NN 32
+
+typedef int Int;
+typedef double Real;
+
+Int main()
+{
+	Int N = NN;
+	Real *x, *y;
+	cudaMallocManaged(&x,N*sizeof(Real));
+	cudaMallocManaged(&y,N*sizeof(Real));
+
+
+	return 0;
+}
