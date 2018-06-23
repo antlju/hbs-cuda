@@ -7,7 +7,7 @@
 
 /// Wrapper function for error checking of CUDA API calls.
 /// Any CUDA API call returns a value of type cudaError_t.
-inline cudaError_t checkCuda(cudaError_t result)
+inline cudaError_t cudaCheck(cudaError_t result)
 {
 	if (result != cudaSuccess) /// Check if call return the 'cudaSucces' value
 	{

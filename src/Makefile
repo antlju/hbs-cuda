@@ -9,8 +9,8 @@ NVCC=nvcc
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
-test:
-	${CUDALINK} derivative_sharedmem.cu -o test.out
+dquery:
+	${CUDALINK} devicequery.cu -o dquery.out
 
 clean:
 	rm *.out
