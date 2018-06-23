@@ -16,7 +16,7 @@ __host__ void printfield(Real *h_mem,const Int Nsize, const Int Nvars)
 			{
 				for (Int k=0;k<Nsize;k++)
 				{
-					printf("%f ", h_mem[fIdx(i,j,k,vi)]);
+					printf("%.3f ", h_mem[fIdx(i,j,k,vi)]);
 				}
 				printf("\n");
 			}
