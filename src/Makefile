@@ -9,9 +9,11 @@ NVCC=nvcc
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
+rollcachederiv:
+	${CUDALINK} rollcache_gpuderiv_v1.cu -o rcache_gpuderiv.out
 
 bundlegpu:
-	${CUDALINK}  bundle_gpuderiv_v1.cu -o bundlegpu.out 
+	${CUDALINK}  bundle_gpuderiv_v2.cu -o bundlegpu.out 
 
 smem_test:
 	${CUDALINK}  rolling_cache_v1.cu -o smem_test.out
