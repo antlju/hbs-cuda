@@ -7,64 +7,35 @@ __host__ Real cosdiffAbsMean(Real *h_mem,const Int Nsize, const Real *x, const I
 
 __global__ void kernel(const Real *f, Real *df, const Real dx)
 {
-	__shared__ Real B[NY_TILE+2*NG][NZ_TILE+2*NG];
 
+	__shared__ Real B[BUNDLESIZE1]; // Scalar Bundle
+	__shared__ Real P[NX_TILE]; // Scalar pencil
+	
 	/// Global indices
-	const Int j = threadIdx.x + blockIdx.x*blockDim.x;
-	const Int k = threadIdx.y + blockIdx.y*blockDim.y;
-	
-	/// Local indices
-	const Int bj = threadIdx.x + NG;
-	const Int bk = threadIdx.y + NG;
+	const Int i = threadIdx.x + blockIdx.x*blockDim.x;
+	const Int k = threadIdx.z + blockIdx.z*blockDim.z;
+	const Int j = threadIdx.y + blockIdx.y*blockDim.y;
 
-	/// X-direction cache init load
-	Real xm2,
-		xm1 = f[fIdx(-2,j,k)],
-		x0 = f[fIdx(-1,j,k)],
-		xp1 = f[fIdx(0,j,k)],
-		xp2 = f[fIdx(1,j,k)];
-
-	Real *iptr[6] = {&xm2,&xm1,&x0,&xp1,&xp2};
+	/// Local index along bundle
+	const Int bi = threadIdx.x + NG;
 	
-	if (j < NY && k < NZ)
+	const Int vi=0;
+	if (i < NX && j < NY && k < NZ)
 	{
-		for (Int i=0;i<NX;i++)
+		loadBundle(B,f,bi,i,j,k,vi);
+		__syncthreads();
+		
+		if (i == 0)
 		{
-			/// Load x-direction rolling cache
-			xm2 = xm1;
-			xm1 = x0;
-			x0 = xp1;
-			xp1 = xp2;
-			xp2 = f[fIdx(i+2,j,k)];
+			loadBundlexGhosts(B,f,j,k,vi);
 			__syncthreads();
-
-			/// Load yz-tile and ghost points
-			B[bj][bk] = x0;
-			if (bj == NG)
-			{
-				B[bj-1][bk] = f[fIdx(i,j-1,k)];
-				B[bj-2][bk] = f[fIdx(i,j-2,k)];
-				B[bj+NY_TILE][bk] = f[fIdx(i,j+NY_TILE,k)];
-				B[bj+NY_TILE+1][bk] = f[fIdx(i,j+NY_TILE+1,k)];
-			}
-			if (bk == NG)
-			{
-				B[bj][bk-1] = f[fIdx(i,j,k-1)];
-				B[bj][bk-2] = f[fIdx(i,j,k-2)];
-				B[bj][bk+NZ_TILE] = f[fIdx(i,j,k+NZ_TILE)];
-				B[bj][bk+NZ_TILE+1] = f[fIdx(i,j,k+NZ_TILE+1)];
-			}
-			__syncthreads();
-
-			/// Compute derivative
-			//df[fIdx(i,j,k)] = 1.0/dx * fd4d1(B[bj][bk-2],B[bj][bk-1],
-			// B[bj][bk+1],B[bj][bk+2]);
-
-			df[fIdx(i,j,k)] = delz_rc(&B[0],1.0/dx,bj,bk,0);
 		}
-	}
-	
-	
+
+		P[bi] = delz(B,1.0/dx,bi,vi);
+
+		df[fIdx(i,j,k)] = P[bi];
+		
+	}		
 
 }
 
@@ -144,8 +115,8 @@ Int main()
 	//dim3 blocks((NN+tpb+1)/tpb);
 
 	//dim3 tpb(NY_TILE,NZ_TILE); //1024 max threads per block on Quadro P4000
-	dim3 tpb(NY_TILE,NZ_TILE); 
-	dim3 blx(NN/NY_TILE,NN/NZ_TILE);
+	dim3 tpb(NX_TILE,NY_TILE,NZ_TILE); 
+	dim3 blx(NN/NX_TILE,NN/NY_TILE,NN/NZ_TILE);
 
 	cudaCheck(cudaEventRecord(start));
 	pbc_x_kernel<<<blx,tpb>>>(d_in,NX,NG,1);
@@ -153,8 +124,7 @@ Int main()
 	pbc_z_kernel<<<blx,tpb>>>(d_in,NZ,NG,1);
 	
 	//cudaCheck(cudaDeviceSynchronize()); /// Needed if several streams
-
-	/// Launch z-derivative kernel
+	
 	kernel<<<blx,tpb>>>(d_in,d_out,dx);
 	cudaCheck(cudaEventRecord(stop));
 	
@@ -172,7 +142,7 @@ Int main()
 
 	cudaCheck(cudaEventElapsedTime(&ms, start, stop));
 
-	printf("Time taken [rchace],(pbc + zderiv): %.4f ms\n", ms);
+	printf("Time taken for GPU bundle/pencil z-derivative: %.4f ms\n", ms);
 	printf("Size (N = %i)^3 \n", NN);
 	
 	cudaCheck(cudaFreeHost(h_in));
