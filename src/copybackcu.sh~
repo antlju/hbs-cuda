@@ -1,0 +1,4 @@
+password="Apa123"
+username="anton"
+Ip="norlx65.nordita.org"
+sshpass -p "$password" scp *.cu $username@$Ip:/home/anton/code/hbs-cuda/src/

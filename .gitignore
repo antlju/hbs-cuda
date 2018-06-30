@@ -42,6 +42,9 @@ simdata/
 *.jpg
 *.eps
 
+#.sh
+*.sh
+
 # Backups
 *.cpp~
 *.h~

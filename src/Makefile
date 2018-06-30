@@ -10,8 +10,11 @@ CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
 
+bundlegpu:
+	${CUDALINK}  bundle_gpuderiv_v1.cu -o bundlegpu.out 
+
 smem_test:
-	${CUDALINK}  shared_mem_test_v2.cu -o smem_test.out
+	${CUDALINK}  rolling_cache_v1.cu -o smem_test.out
 
 dquery:
 	${CUDALINK} devicequery.cu -o dquery.out
