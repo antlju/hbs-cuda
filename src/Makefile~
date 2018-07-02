@@ -1,6 +1,24 @@
+PARAMS=
+INCLUDEPATH= -I errorcheck,mesh,utility,parameters,derivatives
 
-NVCCFLAGS=-O3
+#This arch and sm settings should be compatible with my notebook Geforce GTX 850M card.
+CFLAGS=-std=c++14 -O3
+NVCCFLAGS= --ptxas-options=-v ${CFLAGS} --gpu-architecture=compute_${CC} --gpu-code=sm_${CC}
+
+HEADERS=*.h
+CUSRC=*.cu
+CUOBJ=$(SOURCES:.cu=.o)
 NVCC=nvcc
 
-CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS}
-CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS}
+CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
+CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
+
+EXEC=test.exe
+
+all: $(CUSRC) $(EXEC)
+
+$(EXEC): $(CUSRC) $(HEADERS)
+	${CUDALINK} -o $@
+
+.cu.o: $(CUSRC) $(HEADERS)
+	${CUDACOMPILE} $< -o $@

@@ -213,7 +213,7 @@ Int main()
 	float ms = 0;
 	
 	const Int printOneComp = 1;
-	printfield(h_out,NN,1,printOneComp);
+	//printfield(h_out,NN,1,printOneComp);
 	//printfield(h_in,NN,1,printOneComp);
 	//printfield(h_cosx,NN,1,printOneComp);
 	//printf("host out sum: %f\n", fieldsum(h_out,NN,1));
@@ -222,6 +222,7 @@ Int main()
 	cudaCheck(cudaEventElapsedTime(&ms, start, stop));
 
 	printf("Time taken for GPU bundle/pencil z-derivative: %.4f ms\n", ms);
+	printf("Including pbc_xyz kernels!\n");
 	printf("Size (N = %i)^3 \n", NN);
 	
 	cudaCheck(cudaFreeHost(h_in));

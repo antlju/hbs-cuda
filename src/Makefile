@@ -1,22 +1,24 @@
 PARAMS=
-INCLUDEPATH= -I errorcheck,mesh,utility,parameters
+INCLUDEPATH= -I .,errorcheck,mesh,utility,parameters,derivatives,bundlepencil
 
 #This arch and sm settings should be compatible with my notebook Geforce GTX 850M card.
-NVCCFLAGS= --ptxas-options=-v -std=c++14 --gpu-architecture=compute_${CC} --gpu-code=sm_${CC}
+CFLAGS=-std=c++14 -O3
+NVCCFLAGS= --ptxas-options=-v ${CFLAGS} --gpu-architecture=compute_${CC} --gpu-code=sm_${CC}
 
+HEADERS=*.h
+CUSRC=*.cu derivatives/*.cu
+CUOBJ=$(CUSRC:.cu=.o)
 NVCC=nvcc
 
-CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
-CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
+CUDACOMPILE=$(NVCC) $(NVCCFLAGS) $(PARAMS) $(INCLUDEPATH) -c
+CUDALINK=$(NVCC) $(NVCCFLAGS) $(PARAMS) $(INCLUDEPATH)
 
-bundlercache:
-	${CUDALINK} bprcache_deriv.cu -o bprcache_deriv.out
+EXEC=test.exe
 
-bundle:
-	${CUDALINK} bpframework_deriv.cu -o bundle_deriv.out
+all: $(CUSRC) $(EXEC)
 
-rcache:
-	${CUDALINK} rollcache_gpuderiv_v1.cu -o rcache.out
+$(EXEC): $(CUOBJ) $(HEADERS)
+	$(CUDALINK) $(CUOBJ) -o $@
 
-clean:
-	rm *.out *.o
+%.o: $(CUSRC)
+	$(CUDACOMPILE) $< -o $@
