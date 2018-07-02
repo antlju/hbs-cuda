@@ -221,7 +221,7 @@ Int main()
 
 	cudaCheck(cudaEventElapsedTime(&ms, start, stop));
 
-	printf("Time taken for GPU bundle/pencil z-derivative: %.4f ms\n", ms);
+	printf("Time taken for GPU rolling cache bundle z-derivative: %.4f ms\n", ms);
 	printf("Including pbc_xyz kernels!\n");
 	printf("Size (N = %i)^3 \n", NN);
 	

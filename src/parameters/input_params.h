@@ -1,6 +1,5 @@
 #pragma once
 
-
 #define NN 32
 #define NX NN
 #define NY NN
