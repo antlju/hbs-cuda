@@ -9,6 +9,9 @@ NVCC=nvcc
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
+bundlercache:
+	${CUDALINK} bprcache_deriv.cu -o bprcache_deriv.out
+
 bundle:
 	${CUDALINK} bpframework_deriv.cu -o bundle_deriv.out
 
