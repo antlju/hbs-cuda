@@ -1,7 +1,7 @@
 #pragma once
-
 #include "typedefs.h"
 #include "fd_params.h"
+#include "input_params.h"
 
 /// This gives the (i,j,k)-coordinate for component vi of a discretised 3D vector field
 /// stored as a linear array in memory.

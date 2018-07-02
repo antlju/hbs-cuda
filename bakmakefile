@@ -1,0 +1,26 @@
+PARAMS=
+INCLUDEPATH= -I .,errorcheck,mesh,utility,parameters,derivatives,bundlepencil
+
+#This arch and sm settings should be compatible with my notebook Geforce GTX 850M card.
+CFLAGS=-std=c++14 -O3
+NVCCFLAGS= --ptxas-options=-v ${CFLAGS} --gpu-architecture=compute_${CC} --gpu-code=sm_${CC}
+
+HEADERS=*.h
+#MAINSRC= bprcache_deriv.cu
+CUSRC=derivatives/*.cu
+CUOBJ=$(CUSRC:.cu=.o)
+NVCC=nvcc
+
+CUDACOMPILE=$(NVCC) $(NVCCFLAGS) --device-c $(PARAMS) $(INCLUDEPATH)
+CUDALINK=$(NVCC) $(NVCCFLAGS) $(PARAMS) $(INCLUDEPATH)
+
+all: zderiv.exe
+
+zderiv.o: bprcache_deriv.cu derivatives/derivatives.cu $(HEADERS)
+	$(CUDACOMPILE) -o $@ bprcache_deriv.cu
+
+zderiv.exe: zderiv.o
+	$(CUDALINK) -o $@ $^
+
+clean:
+	rm -rf *.o *.exe 
