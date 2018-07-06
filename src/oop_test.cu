@@ -1,58 +1,58 @@
 #define __ROLLING_CACHE__ 1 /// Enables the rolling cache NZ/NY_TILE defs
 
 #include "common.h"
+#include "fmesh.h"
+#include "grid.h"
+#include "timer.h"
 #include <iostream>
 
-template <class T, Int H>
-class Mesh
+/// Typedefs mesh template classes with number of ghostpoints NG
+/// (from fd_params.h)
+typedef fMesh<Real,NG> Mesh;
+
+/// This kernel demonstrates that I can access obj member variables such as
+/// nx_,ny_ and indexing member methods.
+__global__ void testKernel(Mesh u)
 {
-public:
-	size_t nx_,ny_,nz_,nvars_,ng_ = H;
-	size_t totsize_;
-	/// CUDA API methods, outside const/dest methods b/c reasons:
-	/// https://stackoverflow.com/questions/24869167/trouble-launching-cuda-kernels-from-static-initialization-code
-	__host__ Mesh(const Int Nx,const Int Ny,const Int Nz,const Int Nvars) :
-		nx_(Nx),ny_(Ny),nz_(Nz),nvars_(Nvars),
-		totsize_((Nx+2*H)*(Ny+2*H)*(Nz+2*H)*Nvars)
+	/// Global indices
+	const Int j = threadIdx.x + blockIdx.x*blockDim.x;
+	const Int k = threadIdx.y + blockIdx.y*blockDim.y;
+
+	if (j < u.ny_ && k < u.nz_)
 	{
-		
+		for (size_t i=0;i<u.nx_;i++)
+		{
+			u(i,j,k) = u.indx(i,j,k);
+		}
 	}
+}
 
-	__host__ void allocateHost()
-	{
-		assert(totsize_ > 0);
-		cudaCheck(cudaMallocHost(&h_data,sizeof(T)*totsize_));	
-	}
+/// Instantiate global objects
 
-	__host__ void allocateDevice()
-	{
-		assert(totsize_ > 0);
-		cudaCheck(cudaMalloc((void**)&d_data,sizeof(T)*totsize_));
-	}
-
-	__host__ void copyToDevice()
-	{
-		
-	}
-	
-private:
-	T *d_data;
-	T *h_data;
-
-}; /// End class Mesh
-
-
-
-
-Mesh<Real,2> globalMesh(NX,NY,NZ,3);
+Mesh u(NX,NY,NZ,1);
+Grid grid(NX,NY,NZ,0.0,2*M_PI);
+Timer timer;
 
 Int main()
 {
-	globalMesh.allocateHost(); globalMesh.allocateDevice();
-	std::cout << globalMesh.nx_ << std::endl;
+	std::cout << "Executing w/ size: (N =" << NN << ")^3" << std::endl;
+	u.allocateHost(); u.allocateDevice();
 
+	timer.createEvents();
+	//globalMesh.copyToDevice();
+	dim3 tpb(NY_TILE,NZ_TILE); 
+	dim3 blx(NN/NY_TILE,NN/NZ_TILE);
+	timer.recordStart();
+	testKernel<<<blx,tpb>>>(u);
+	timer.recordStop();
+	timer.synch();
+	
+	timer.print();
+	
+	u.copyFromDevice();
+	u.print();
 
-
+	
 	return 0;
 };
 

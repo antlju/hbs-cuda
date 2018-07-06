@@ -10,7 +10,7 @@ CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
 oop:
-	${CUDALINK} oop_test.cu -o oop_test.out
+	${CUDALINK} oop_deriv.cu -o oop_deriv.out
 
 bundlercache:
 	${CUDALINK} bprcache_deriv.cu -o bprcache_deriv.out
