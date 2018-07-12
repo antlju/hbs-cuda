@@ -47,23 +47,25 @@ __device__ void loadShared(Shared fs, Mesh f, const Int i, const Int j, const In
 	{
 		/// Load the shared memory tile
 		/// fs for "f shared"
-		fs(vi,lj,lk) = f(i+2,j,k,vi);
+		fs(lj,lk,vi) = f(i+2,j,k,vi);
+
 		
 		/// If at yz-tile edges assign ghost points
-				if (lj == 0)
-				{
-					fs(lj-1,lk,vi) = f(i+2,j-1,k,vi);
-					fs(lj-2,lk,vi) = f(i+2,j-2,k,vi);
-					fs(lj+fs.ny_tile_,lk,vi) = f(i+2,j+fs.ny_tile_,k,vi);
-					fs(lj+fs.ny_tile_+1,lk,vi) = f(i+2,j+fs.ny_tile_+1,k,vi);
-				}
-				if (lk == 0)
-				{
-					fs(lj,lk-1,vi) = f(i+2,j,k-1,vi);
-					fs(lj,lk-2,vi) = f(i+2,j,k-2,vi);
-					fs(lj,lk+fs.nz_tile_,vi) = f(i+2,j,k+fs.nz_tile_,vi);
-					fs(lj,lk+fs.nz_tile_+1,vi) = f(i+2,j,k+fs.nz_tile_+1,vi);
-				}
+		if (lj == 0)
+		{
+			fs(lj-1,lk,vi) = f(i+2,j-1,k,vi);
+			fs(lj-2,lk,vi) = f(i+2,j-2,k,vi);
+			fs(lj+fs.ny_tile_,lk,vi) = f(i+2,j+fs.ny_tile_,k,vi);
+			fs(lj+fs.ny_tile_+1,lk,vi) = f(i+2,j+fs.ny_tile_+1,k,vi);
+		}
+		if (lk == 0)
+		{
+			fs(lj,lk-1,vi) = f(i+2,j,k-1,vi);
+			fs(lj,lk-2,vi) = f(i+2,j,k-2,vi);
+			fs(lj,lk+fs.nz_tile_,vi) = f(i+2,j,k+fs.nz_tile_,vi);
+			fs(lj,lk+fs.nz_tile_+1,vi) = f(i+2,j,k+fs.nz_tile_+1,vi);
+		}
+		
 	}
 	//__syncthreads(); //Sync is done outside this function (inside the proper kernel)
 }
