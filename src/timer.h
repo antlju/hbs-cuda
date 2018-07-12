@@ -20,7 +20,7 @@ public:
 	{
 		cudaCheck(cudaEventRecord(stop));
 	}
-	__host__ void synch()
+	__host__ void sync()
 	{
 		cudaCheck(cudaEventSynchronize(stop));
 	}

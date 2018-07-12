@@ -1,7 +1,7 @@
 #pragma once
 #include "derivatives.h"
 
-__device__ void bundleInit(Real *B, Mesh f, const Int j, const Int k, const Int vi)
+__device__ void bundleInitNoClass(Real *B, Mesh f, const Int j, const Int k, const Int vi)
 {
 	for (Int bi=-(NG-1);bi<NG+1;bi++)
 	{

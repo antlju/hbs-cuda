@@ -9,23 +9,10 @@ NVCC=nvcc
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
-vbundletest:
-	${CUDALINK} vectorBundleTest.cu -o vbundletest.exe
-
-curltest:
-	${CUDALINK} curl_test.cu -o curl.exe
-
-oop:
-	${CUDALINK} oop_deriv.cu -o oop_deriv.exe
-
-bundlercache:
-	${CUDALINK} bprcache_deriv.cu -o bprcache_deriv.exe
-
-bundle:
-	${CUDALINK} bpframework_deriv.cu -o bundle_deriv.exe
-
-rcache:
-	${CUDALINK} rollcache_gpuderiv_v1.cu -o rcache.exe
+smemclass:
+	${CUDALINK} smemclass.cu -o outsmemclass.exe
+dquery:
+	${CUDALINK} devicequery.cu -o devquery.exe
 
 clean:
 	rm *.exe

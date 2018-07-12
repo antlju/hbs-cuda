@@ -15,7 +15,9 @@ Timer timer;
 
 __global__ void vecBundleKernel(Mesh f, Grid grid)
 {
-	__shared__ Real fs[3][NY_TILE+2*NG][NZ_TILE+2*NG];
+	__shared__ Real smem[3*(NY_TILE+2*NG)*(NZ_TILE+2*NG)];
+
+	Shared fs(smem,NY_TILE,NZ_TILE,3,NG); /// Shared memory object for indexing
 	
 	const Int ng = f.ng_;
 	/// Global indices
@@ -28,7 +30,8 @@ __global__ void vecBundleKernel(Mesh f, Grid grid)
 	const Int li = 0; /// the "center" of the bundle (fd stencil) in any "roll step".
 	                  /// This will always be zero for any
 	                  /// global index i along the array.
-	
+
+	/// Bundle memory and Bundle pointer to that memory
 	Real vB[3*(4*NG+1)*(1+2*NG)];
 	Bundle Bndl(&vB[0],4*NG+1,3);
 

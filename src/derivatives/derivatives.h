@@ -29,17 +29,17 @@ Real delx(Bundle B, const Real dxfactor, const Int i, const Int vi)
 }
 
 __device__
-Real dely(const Real *B, const Real dyfactor, const Int i, const Int vi)
+Real dely(Bundle B, const Real dyfactor, const Int i, const Int vi)
 {
-        return dyfactor * fd4d1(B[bIdx(i,7,vi)],B[bIdx(i,3,vi)], //refer to qjkmap.h for q->j vals.
-                                B[bIdx(i,1,vi)],B[bIdx(i,5,vi)]);
+        return dyfactor * fd4d1(B(i,7,vi),B(i,3,vi), //refer to qjkmap.h for q->j vals.
+                                B(i,1,vi),B(i,5,vi));
 }
 
 __device__
-Real delz(const Real *B, const Real dzfactor, const Int i, const Int vi)
+Real delz(Bundle B, const Real dzfactor, const Int i, const Int vi)
 {
-        return dzfactor * fd4d1(B[bIdx(i,6,vi)],B[bIdx(i,2,vi)], //refer to qjkmap.h for q->k vals.
-                                B[bIdx(i,4,vi)],B[bIdx(i,8,vi)]);
+        return dzfactor * fd4d1(B(i,6,vi),B(i,2,vi), //refer to qjkmap.h for q->k vals.
+                                B(i,4,vi),B(i,8,vi));
 }
 
 
