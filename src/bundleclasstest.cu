@@ -5,7 +5,6 @@
 #include <iostream>
 
 #include "bundle.h"
-#include "curl_kernel.h"
 
 /// Instantiate global objects
 Mesh u(NX,NY,NZ,3);
@@ -14,26 +13,26 @@ Timer timer;
 
 __global__ void bundleClassKernel(Mesh f, Grid grid)
 {
+	__shared__ Real fs[3][NY_TILE+2*NG][NZ_TILE+2*NG];
+	
 	const Int ng = f.ng_;
 	/// Global indices
 	const Int j = threadIdx.x + blockIdx.x*blockDim.x;
 	const Int k = threadIdx.y + blockIdx.y*blockDim.y;
 	
 	/// Local indices
-	const Int bj = threadIdx.x + ng;
-	const Int bk = threadIdx.y + ng;
-	const Int bi = 0; /// the "center" of the bundle (fd stencil) in any "roll step".
+	const Int lj = threadIdx.x + ng;
+	const Int lk = threadIdx.y + ng;
+	const Int li = 0; /// the "center" of the bundle (fd stencil) in any "roll step".
 	                  /// This will always be zero for any
 	                  /// global index i along the array.
 	
 	Real vB[3*(4*NG+1)*(1+2*NG)];
 	Bundle Bndl(&vB[0],4*NG+1,3);
-	for (Int q=0;q<Bndl.bundleSize_;q++)
+
+	for (Int vi=0;vi<f.nvars_;vi++)
 	{
-		for(Int vi=0;vi<Bndl.nvars_;vi++)
-		{
-			Bndl(0,q,vi) = 1;
-		}
+		bundleInit(Bndl,f,j,k,vi);
 	}
 
 	if (j < f.ny_ && k < f.nz_)
@@ -42,8 +41,8 @@ __global__ void bundleClassKernel(Mesh f, Grid grid)
 		{
 			for (Int vi=0;vi<Bndl.nvars_;vi++)
 			{
-				Int qi = (i+j+k) % 9;
-				f(i,j,k,vi) = Bndl(0,qi,vi);
+				Int qi = (i+lj+lk) % 9;
+				f(i,j,k,vi) = qi;
 			}
 		}
 	}

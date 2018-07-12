@@ -9,8 +9,8 @@ NVCC=nvcc
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
-bundleclass:
-	${CUDALINK} bundleclasstest.cu -o bclasstest.exe
+vbundletest:
+	${CUDALINK} vectorBundleTest.cu -o vbundletest.exe
 
 curltest:
 	${CUDALINK} curl_test.cu -o curl.exe
