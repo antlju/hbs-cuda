@@ -31,12 +31,41 @@ void initHost(Mesh &u, const Grid &grid)
 }
 
 /// Instantiate global objects
-
 Mesh u(NX,NY,NZ,3);
 Mesh du(NX,NY,NZ,3);
 Grid grid(NX,NY,NZ,0.0,2*M_PI);
 Timer timer;
 
+__host__ void testCurl(Mesh &du)
+{
+	Real ref[3];
+	ref[0] = 1;
+	ref[1] = -2;
+	ref[2] = 1;
+
+	Real maxE[3];
+	
+	for (Int i=0;i<du.nx_;i++)
+	{
+		for (Int j=0;j<du.ny_;j++)
+		{
+			for (Int k=0;k<du.nz_;k++)
+			{
+				for (Int vi=0;vi<du.nvars_;vi++)
+				{
+					Real val = du.h_data[du.indx(i,j,k,vi)];
+					Real err = fabs(val-ref[vi]);
+					if (err > maxE[vi])
+						maxE[vi] = err;
+				}
+			}
+		}
+	}
+
+	std::cout << "x max error: " << maxE[0] << std::endl;
+	std::cout << "y max error: " << maxE[1] << std::endl;
+	std::cout << "z max error: " << maxE[2] << std::endl;
+}
 
 
 Int main()
@@ -59,17 +88,21 @@ Int main()
 	pbc_y_kernel<<<blx,tpb>>>(u);
 	pbc_z_kernel<<<blx,tpb>>>(u);
 	
-	zderivKernel<<<blx,tpb>>>(u,du,grid.dx_);
+	curlKernel<<<blx,tpb>>>(u,du,grid);
 	
 	timer.recordStop();
 	timer.synch();
 
 	du.copyFromDevice();
+
+	du.print();
+	
+	testCurl(du);
 	
 	timer.print();
 	
 
-	//du.print();
+	
 
 	return 0;
 };
