@@ -107,11 +107,7 @@ __global__ void smemClassKernel(Mesh f, Mesh df, Grid grid)
 	/// Initialise for rolling cache
 	for (Int vi=0;vi<f.nvars_;vi++)
 	{
-		//	  bundleInit(Bndl,f,j,k,vi);
-		Bndl(-1,0,vi) = f(-2,j,k,vi);
-		Bndl(0,0,vi) = f(-1,j,k,vi);
-		Bndl(1,0,vi) = f(0,j,k,vi);
-		Bndl(2,0,vi) = f(1,j,k,vi);
+		bundleInit(Bndl,f,j,k,vi);
 	}
 	__syncthreads();
 
@@ -121,22 +117,17 @@ __global__ void smemClassKernel(Mesh f, Mesh df, Grid grid)
 	{
 		for (Int i=0;i<f.nx_;i++)
 		{
-			
-			Bndl(-2,0,vi) = Bndl(-1,0,vi);
-			Bndl(-1,0,vi) = Bndl(0,0,vi);
-			Bndl(0,0,vi) = Bndl(1,0,vi);
-			Bndl(1,0,vi) = Bndl(2,0,vi);
-			Bndl(2,0,vi) = f(i+2,j,k,vi);
+
 			
 			/// *** ___ Roll the cache ! ___ ***
 			/// Load shared tile into local bundle
-			//rollBundleCacheNoShared(Bndl,f,i+2,j,k);
+			rollBundleCacheNoShared(Bndl,f,i+2,j,k);
 			//rollBundleCache(Bndl,fs,lj,lk);
 
 			/// Do operations on bundle:
 			//df(i,j,k,0) = f.indx(i,j,k); //This works
 			//df(i,j,k,0) = Bndl(li,0,0);//delz(Bndl,1.0/grid.dx_,li,0);
-			df(i,j,k,0) = delx(Bndl,1.0/grid.dx_,li,0);
+			df(i,j,k,0) = delz(Bndl,1.0/grid.dx_,li,0);
 			       
 		}//End for loop over i.
 		
@@ -240,7 +231,7 @@ __host__ void initHost(Mesh &f, const Grid &grid)
 		{
 			for (Int k=0;k<f.nz_;k++)
 			{
-				f.h_data[f.indx(i,j,k,0)] = sin(x[i]);
+				f.h_data[f.indx(i,j,k,0)] = sin(x[k]);
 				//f.h_data[f.indx(i,j,k,0)] = f.indx(i,j,k,0);//sin(x[k]);
 				//f.h_data[f.indx(i,j,k,1)] = 2*(x[j]+1);
 				//f.h_data[f.indx(i,j,k,2)] = 3*(x[k]+1);
@@ -267,8 +258,8 @@ Int main()
 	timer.recordStart();
  
 	pbc_x_kernel<<<blx,tpb>>>(u);
-	//pbc_y_kernel<<<blx,tpb>>>(u);
-	//pbc_z_kernel<<<blx,tpb>>>(u);
+	pbc_y_kernel<<<blx,tpb>>>(u);
+	pbc_z_kernel<<<blx,tpb>>>(u);
 
 	smemClassKernel<<<blx,tpb>>>(u,du,grid);
 	//zderivKernel<<<blx,tpb>>>(u,du,grid.dx_);
