@@ -15,14 +15,11 @@ __host__ __device__ inline size_t fIdx(const Int i, const Int j, const Int k, co
 
 __host__ __device__ inline size_t bIdx(const Int i, const Int q, const Int vi=0)
 {
-	return q*(1+2*NG)+vi*(1+2*NG)+(i+NG);
-}
-
-
-__host__ __device__ inline size_t bIdx3(const Int i, const Int q, const Int vi=0)
-{
+	
+	//assert(Nvars == 1 || Nvars == 3);
 	return q*3*(1+2*NG)+vi*(1+2*NG)+(i+NG);
 }
+
 
 __host__ __device__ inline size_t pIdx(const Int i, const Int vi=0)
 {

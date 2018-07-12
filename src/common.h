@@ -9,9 +9,10 @@
 #include "input_params.h"
 #include "indexing.h"
 #include "fmesh.h"
+#include "pbmesh.h"
 
 typedef fMesh<Real,NG> Mesh;
-
+typedef bundleMesh<Real, NG> Bundle;
 #include "pbc_kernel.h"
 
 /* Includes before OOP
