@@ -6,6 +6,7 @@
 
 #include "bundle.h"
 #include "derivatives.h"
+#include "shared.h"
 
 /// Instantiate global objects
 Mesh u(NX,NY,NZ,3);
