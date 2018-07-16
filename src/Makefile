@@ -9,10 +9,10 @@ NVCC=nvcc
 CUDACOMPILE=${NVCC} -c ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 CUDALINK=${NVCC} ${NVCCFLAGS} ${PARAMS} ${INCLUDEPATH}
 
-smemclass:
-	${CUDALINK} smemclass.cu -o outsmemclass.exe
+curltest:
+	${CUDALINK} curltest.cu -o curltest.exe
 dquery:
 	${CUDALINK} devicequery.cu -o devquery.exe
 
 clean:
-	rm *.exe
+	rm *.exe *.out

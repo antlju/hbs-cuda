@@ -14,7 +14,9 @@
 typedef fMesh<Real,2> Mesh;
 typedef bundleMesh<Real, 2> Bundle;
 
+#include "shared.h"
+#include "bundle.h"
+
 #include "pbc_kernel.h"
 #include "derivatives.h"
-#include "bundle.h"
-#include "shared.h"
+#include "curl.h"
