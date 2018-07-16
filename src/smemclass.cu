@@ -112,11 +112,8 @@ __global__ void smemClassKernel(Mesh f, Mesh df, Grid grid)
 			//rollBundleCacheNoShared(Bndl,f,i+2,j,k); //Time taken: 0.0583 ms for N=8
 			rollBundleCache(Bndl,fs,lj,lk);
 
-			/// Do operations on bundle:
-			//df(i,j,k,0) = f.indx(i,j,k); //This works
-			//df(i,j,k,0) = Bndl(li,0,0);//delz(Bndl,1.0/grid.dx_,li,0);
+			/// Do operations on bundle:	
 			df(i,j,k,0) = delz(Bndl,1.0/grid.dx_,li,0);
-			//df(i,j,k,0) = delx(Bndl,1.0/grid.dx_,li,0);
 			       
 		}//End for loop over i.
 		
@@ -172,8 +169,8 @@ Int main()
 	timer.sync();
 
 	du.copyFromDevice();
-
-	du.print();
+	printf("%.6f \t %.6f \n",du.h_data[du.indx(0,0,1,0)],du.h_data[du.indx(du.nx_-1,du.ny_-1,du.nz_-1,0)]);
+	//du.print();
 	
 //testCurl(du);
 	
