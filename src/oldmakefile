@@ -1,0 +1,21 @@
+PARAMS=
+INCLUDEPATH= -I .,errorcheck,mesh,utility,parameters,derivatives,curl,/usr/local/cuda/inc -L/usr/local/cuda/lib
+#CUFFTPATH= 
+
+#This arch and sm settings should be compatible with my notebook Geforce GTX 850M card.
+NVCCFLAGS= --ptxas-options=-v -std=c++14 --gpu-architecture=compute_${CC} --gpu-code=sm_${CC} -lcufft
+
+NVCC=nvcc
+
+CUDACOMPILE=${NVCC} -c ${INCLUDEPATH} ${NVCCFLAGS} ${PARAMS} 
+CUDALINK=${NVCC} ${INCLUDEPATH} ${NVCCFLAGS} ${PARAMS} 
+
+fft:
+	${CUDALINK} fft.cu -o fft.exe
+curltest:
+	${CUDALINK} curltest.cu -o curltest.exe
+dquery:
+	${CUDALINK} devicequery.cu -o devquery.exe
+
+clean:
+	rm *.exe *.out
