@@ -23,3 +23,5 @@ typedef bundleMesh<Real, 2> Bundle;
 #include "pbc_kernel.h"
 #include "derivatives.h"
 #include "curl.h"
+#include "grad.h"
+#include "lapl.h"

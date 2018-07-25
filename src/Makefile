@@ -4,6 +4,13 @@ INCLUDEPATH= -I .,errorcheck,mesh,utility,parameters,derivatives,curl -I/usr/loc
 NVCCFLAGS= --ptxas-options=-v -std=c++14 --gpu-architecture=compute_${CC} --gpu-code=sm_${CC} -lcufft
 
 
+
+lapltest:
+	nvcc lapltest.cu ${INCLUDEPATH} ${NVCCFLAGS} -o laplexec.exe
+
+gradtest:
+	nvcc gradtest.cu ${INCLUDEPATH} ${NVCCFLAGS} -o exegrad.exe
+
 poisson3doutofplace:
 	nvcc poisson_3d_outofplace.cu ${INCLUDEPATH} ${NVCCFLAGS} -o pssn.exe
 
