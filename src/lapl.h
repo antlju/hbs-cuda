@@ -9,6 +9,7 @@ void lapl(Bundle B, Real *P, const Int i, const Real xfac, const Real yfac, cons
 {
 
 	P[0] = del2x(B,xfac,i,0)+del2y(B,yfac,i,0)+del2z(B,zfac,i,0);
+	//P[0] = del2z(B,zfac,i,0);
 
 }
 
@@ -19,7 +20,8 @@ void vlapl(Bundle B, Real *P, const Int i, const Real xfac, const Real yfac, con
 {
 	for (Int vi=0;vi<B.nvars_;vi++)
 	{
-		P[vi] = del2x(B,xfac,i,vi)+del2y(B,yfac,i,vi)+del2z(B,zfac,i,vi);
+		//P[vi] = del2x(B,xfac,i,vi)+del2y(B,yfac,i,vi)+del2z(B,zfac,i,vi);
+		P[vi] = del2z(B,zfac,i,vi);
 	}
 	
 }

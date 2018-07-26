@@ -7,17 +7,17 @@
 
 /// Instantiate global objects
 Mesh u(NX,NY,NZ,3);
-Mesh du(NX,NY,NZ,1);
+Mesh du(NX,NY,NZ,3);
 Grid grid(NX,NY,NZ,0.0,2*M_PI);
 Timer timer;
 
 
 
-__global__ void laplKernel(Mesh f, Mesh df, Grid grid)
+__global__ void vlaplKernel(Mesh f, Mesh df, Grid grid)
 {
 	__shared__ Real smem[3*(NY_TILE+2*NG)*(NZ_TILE+2*NG)];
 
-	Shared fs(smem,NY_TILE,NZ_TILE,3,NG); /// Shared memory object for indexing
+	Shared fs(smem,NY_TILE,NZ_TILE,1,NG); /// Shared memory object for indexing
 
 	const Real invdx = 1.0/grid.dx_;
 	const Real invdx2 = invdx*invdx;
@@ -36,9 +36,8 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 	/// Bundle memory and Bundle pointer to that memory
 	Real vB[3*(4*NG+1)*(1+2*NG)];
 	//Real sB[(4*NG+1)*(1+2*NG)];
-	Bundle Bndl(&vB[0],4*NG+1,3);
-	Real P[1]; /// Local scalar "pencil"
-
+	Bundle Bndl(&vB[0],4*NG+1,1);
+	Real P[3]; /// Local scalar "pencil"
 	
 	/// Initialise for rolling cache
 	for (Int vi=0;vi<f.nvars_;vi++)
@@ -46,12 +45,6 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 		bundleInit(Bndl,f,j,k,vi);
 	}
 	__syncthreads();
-       
-	
-	//Bndl(-1,0,0) = f(-2,j,k,0);
-	//Bndl(0,0,0) = f(-1,j,k,0);
-	//Bndl(1,0,0) = f(0,j,k,0);
-	//Bndl(2,0,0) = f(1,j,k,0);
 
 	const Int vi = 0;
 	 
@@ -59,8 +52,6 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 	{
 		for (Int i=0;i<f.nx_;i++)
 		{
-
-			
 			///Load shared memory and ghostpts
 			loadShared(fs,f,
 				   i,j,k,
@@ -70,20 +61,16 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 			
 			/// *** ___ Roll the cache ! ___ ***
 			rollBundleCache(Bndl,fs,lj,lk);
-			//Bndl(-2,0,0) = Bndl(-1,0,0);
-			//Bndl(-1,0,0) = Bndl(0,0,0);
-			//Bndl(0,0,0) = Bndl(1,0,0);
-			//Bndl(1,0,0) = Bndl(2,0,0);
-			//Bndl(2,0,0) = f(i+2,j,k);
-			
+
 			/// Do operations on bundle:
 			//curl(Bndl,P,li,invdx,invdx,invdx);
-			lapl(Bndl,P,li,invdx2,invdx2,invdx2);
+			//lapl(Bndl,P,li,invdx,invdx,invdx);
 			// Set pencil
-			//df(i,j,k,0) = del2z(Bndl,invdx2,li,0);
-			//df(i,j,k,0) = dely(Bndl,invdx,li,1);
-			//df(i,j,k,0) = fabs(Bndl(0,0,0)-f(i,j,k,0));
-			df(i,j,k,0) = P[0];
+			vlapl(Bndl,P,li,invdx2,invdx2,invdx);
+			for (Int vi=0;vi<Bndl.nvars_;vi++)
+			{
+				df(i,j,k,vi) = P[vi];
+			}
 			//df(i,j,k,0) = 1; df(i,j,k,1) = 2; df(i,j,k,2) = 3;
 			//df(i,j,k,0) = delz(Bndl,invdx,li,0);
 			       
@@ -106,9 +93,9 @@ __host__ void initHost(Mesh &f, const Grid &grid)
 				//f.h_data[f.indx(i,j,k,0)] = 1.0*sin(x[i])+2.0*sin(x[j])+3.0*sin(x[k]);
 				//f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
 				/// Initialises f = (1z,2x,3y) -> curl(f) = (3,1,2)
-				f.h_data[f.indx(i,j,k,0)] = sin(x[j]);
-				f.h_data[f.indx(i,j,k,1)] = sin(x[j]);
-				f.h_data[f.indx(i,j,k,2)] = 0;
+				f.h_data[f.indx(i,j,k,0)] = sin(x[k]);
+				f.h_data[f.indx(i,j,k,1)] = sin(x[k]);
+				f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
 			}
 		}
 	}
@@ -129,14 +116,12 @@ Int main()
 	dim3 tpb(NY_TILE,NZ_TILE); 
 	dim3 blx(NN/NY_TILE,NN/NZ_TILE);
 	timer.recordStart();
-
-	
+ 
 	pbc_x_kernel<<<blx,tpb>>>(u);
 	pbc_y_kernel<<<blx,tpb>>>(u);
 	pbc_z_kernel<<<blx,tpb>>>(u);
-	
-	
-	laplKernel<<<blx,tpb>>>(u,du,grid);
+
+	vlaplKernel<<<blx,tpb>>>(u,du,grid);
 	//zderivKernel<<<blx,tpb>>>(u,du,grid.dx_);
 //curlKernel<<<blx,tpb>>>(u,du,grid);
 	

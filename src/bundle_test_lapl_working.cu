@@ -13,7 +13,7 @@ Timer timer;
 
 
 
-__global__ void laplKernel(Mesh f, Mesh df, Grid grid)
+__global__ void bundle_test_kernel(Mesh f, Mesh df, Grid grid)
 {
 	__shared__ Real smem[3*(NY_TILE+2*NG)*(NZ_TILE+2*NG)];
 
@@ -37,8 +37,7 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 	Real vB[3*(4*NG+1)*(1+2*NG)];
 	//Real sB[(4*NG+1)*(1+2*NG)];
 	Bundle Bndl(&vB[0],4*NG+1,3);
-	Real P[1]; /// Local scalar "pencil"
-
+	Real P[1]; /// Local vector "pencil"
 	
 	/// Initialise for rolling cache
 	for (Int vi=0;vi<f.nvars_;vi++)
@@ -46,21 +45,13 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 		bundleInit(Bndl,f,j,k,vi);
 	}
 	__syncthreads();
-       
-	
-	//Bndl(-1,0,0) = f(-2,j,k,0);
-	//Bndl(0,0,0) = f(-1,j,k,0);
-	//Bndl(1,0,0) = f(0,j,k,0);
-	//Bndl(2,0,0) = f(1,j,k,0);
 
-	const Int vi = 0;
+	//const Int vi = 0;
 	 
 	if (j < f.ny_ && k < f.nz_)
 	{
 		for (Int i=0;i<f.nx_;i++)
 		{
-
-			
 			///Load shared memory and ghostpts
 			loadShared(fs,f,
 				   i,j,k,
@@ -70,21 +61,12 @@ __global__ void laplKernel(Mesh f, Mesh df, Grid grid)
 			
 			/// *** ___ Roll the cache ! ___ ***
 			rollBundleCache(Bndl,fs,lj,lk);
-			//Bndl(-2,0,0) = Bndl(-1,0,0);
-			//Bndl(-1,0,0) = Bndl(0,0,0);
-			//Bndl(0,0,0) = Bndl(1,0,0);
-			//Bndl(1,0,0) = Bndl(2,0,0);
-			//Bndl(2,0,0) = f(i+2,j,k);
-			
+
 			/// Do operations on bundle:
-			//curl(Bndl,P,li,invdx,invdx,invdx);
 			lapl(Bndl,P,li,invdx2,invdx2,invdx2);
+
 			// Set pencil
-			//df(i,j,k,0) = del2z(Bndl,invdx2,li,0);
-			//df(i,j,k,0) = dely(Bndl,invdx,li,1);
-			//df(i,j,k,0) = fabs(Bndl(0,0,0)-f(i,j,k,0));
-			df(i,j,k,0) = P[0];
-			//df(i,j,k,0) = 1; df(i,j,k,1) = 2; df(i,j,k,2) = 3;
+			df(i,j,k,0) = P[0];// df(i,j,k,1) = P[0]; df(i,j,k,2) = P[0];
 			//df(i,j,k,0) = delz(Bndl,invdx,li,0);
 			       
 		}//End for loop over i.
@@ -103,15 +85,45 @@ __host__ void initHost(Mesh &f, const Grid &grid)
 		{
 			for (Int k=0;k<f.nz_;k++)
 			{
-				//f.h_data[f.indx(i,j,k,0)] = 1.0*sin(x[i])+2.0*sin(x[j])+3.0*sin(x[k]);
 				//f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
 				/// Initialises f = (1z,2x,3y) -> curl(f) = (3,1,2)
-				f.h_data[f.indx(i,j,k,0)] = sin(x[j]);
+				f.h_data[f.indx(i,j,k,0)] = sin(x[k]);
 				f.h_data[f.indx(i,j,k,1)] = sin(x[j]);
-				f.h_data[f.indx(i,j,k,2)] = 0;
+				f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
 			}
 		}
 	}
+}
+
+__host__ void checkCurl(Mesh &f)
+{
+	Real xcomp = f.h_data[f.indx(NX/2,NY/2,NZ/2,0)];
+	Real ycomp = f.h_data[f.indx(NX/2,NY/2,NZ/2,1)];
+	Real zcomp = f.h_data[f.indx(NX/2,NY/2,NZ/2,2)];
+	printf("%.3f, \t %.3f, \t %.3f \n",xcomp,ycomp,zcomp);
+	/*
+	Real xcomp;
+	Real ycomp;
+	Real zcomp;
+	Real size = f.nx_*f.ny_*f.nz_;
+	
+	for (Int i=0;i<f.nx_;i++)
+	{
+		for (Int j=0;j<f.ny_;j++)
+		{
+			for (Int k=0;k<f.nz_;k++)
+			{
+				//f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
+				/// Initialises f = (1z,2x,3y) -> curl(f) = (3,1,2)
+				xcomp += f.h_data[f.indx(i,j,k,0)];
+				ycomp += f.h_data[f.indx(i,j,k,1)];
+				zcomp += f.h_data[f.indx(i,j,k,2)];
+			}
+		}
+	}
+	xcomp = xcomp/size; ycomp = ycomp/size; zcomp = zcomp/size;
+	printf("%.3f, \t %.3f, \t %.3f \n",xcomp,ycomp,zcomp);
+	*/
 }
 
 Int main()
@@ -129,14 +141,12 @@ Int main()
 	dim3 tpb(NY_TILE,NZ_TILE); 
 	dim3 blx(NN/NY_TILE,NN/NZ_TILE);
 	timer.recordStart();
-
-	
+ 
 	pbc_x_kernel<<<blx,tpb>>>(u);
 	pbc_y_kernel<<<blx,tpb>>>(u);
 	pbc_z_kernel<<<blx,tpb>>>(u);
-	
-	
-	laplKernel<<<blx,tpb>>>(u,du,grid);
+
+	bundle_test_kernel<<<blx,tpb>>>(u,du,grid);
 	//zderivKernel<<<blx,tpb>>>(u,du,grid.dx_);
 //curlKernel<<<blx,tpb>>>(u,du,grid);
 	
@@ -145,10 +155,10 @@ Int main()
 
 	du.copyFromDevice();
 	//printf("%.6f \t %.6f \n",du.h_data[du.indx(0,0,1,0)],du.h_data[du.indx(du.nx_-1,du.ny_-1,du.nz_-1,0)]);
-	//du.print();
+	du.print();
 	
 //testCurl(du);
-	du.print();
+	
 	timer.print();
 	
 	return 0;
