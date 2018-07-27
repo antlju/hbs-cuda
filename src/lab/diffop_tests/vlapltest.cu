@@ -17,7 +17,7 @@ __global__ void vlaplKernel(Mesh f, Mesh df, Grid grid)
 {
 	__shared__ Real smem[3*(NY_TILE+2*NG)*(NZ_TILE+2*NG)];
 
-	Shared fs(smem,NY_TILE,NZ_TILE,1,NG); /// Shared memory object for indexing
+	Shared fs(smem,NY_TILE,NZ_TILE,3,NG); /// Shared memory object for indexing
 
 	const Real invdx = 1.0/grid.dx_;
 	const Real invdx2 = invdx*invdx;
@@ -36,7 +36,7 @@ __global__ void vlaplKernel(Mesh f, Mesh df, Grid grid)
 	/// Bundle memory and Bundle pointer to that memory
 	Real vB[3*(4*NG+1)*(1+2*NG)];
 	//Real sB[(4*NG+1)*(1+2*NG)];
-	Bundle Bndl(&vB[0],4*NG+1,1);
+	Bundle Bndl(&vB[0],4*NG+1,3);
 	Real P[3]; /// Local scalar "pencil"
 	
 	/// Initialise for rolling cache
@@ -66,7 +66,7 @@ __global__ void vlaplKernel(Mesh f, Mesh df, Grid grid)
 			//curl(Bndl,P,li,invdx,invdx,invdx);
 			//lapl(Bndl,P,li,invdx,invdx,invdx);
 			// Set pencil
-			vlapl(Bndl,P,li,invdx2,invdx2,invdx);
+			vlapl(Bndl,P,li,invdx2,invdx2,invdx2);
 			for (Int vi=0;vi<Bndl.nvars_;vi++)
 			{
 				df(i,j,k,vi) = P[vi];
@@ -93,8 +93,8 @@ __host__ void initHost(Mesh &f, const Grid &grid)
 				//f.h_data[f.indx(i,j,k,0)] = 1.0*sin(x[i])+2.0*sin(x[j])+3.0*sin(x[k]);
 				//f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
 				/// Initialises f = (1z,2x,3y) -> curl(f) = (3,1,2)
-				f.h_data[f.indx(i,j,k,0)] = sin(x[k]);
-				f.h_data[f.indx(i,j,k,1)] = sin(x[k]);
+				f.h_data[f.indx(i,j,k,0)] = sin(x[i]);
+				f.h_data[f.indx(i,j,k,1)] = sin(x[j]);
 				f.h_data[f.indx(i,j,k,2)] = sin(x[k]);
 			}
 		}
