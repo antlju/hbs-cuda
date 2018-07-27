@@ -13,6 +13,7 @@
 #include "pbmesh.h"
 #include "grid.h"
 #include "timer.h"
+#include "params.h"
 
 typedef fMesh<Real,2> Mesh;
 typedef bundleMesh<Real, 2> Bundle;
