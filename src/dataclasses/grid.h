@@ -9,6 +9,7 @@ public:
 	size_t nx_,ny_,nz_;
 	Real L0_,L1_,dx_,invdx_;
 	Real *h_linspace;
+	Real *d_linspace;
 	Real xlen;
 	__host__ Grid(Real Nx, Real Ny, Real Nz, Real L0, Real L1) :
 		nx_(Nx),ny_(Ny),nz_(Nz),L0_(L0),L1_(L1)
@@ -26,6 +27,12 @@ public:
 		{
 			h_linspace[i] = L0_+dx_*i;
 		}
+	}
+
+	__host__ void copyLinspaceToDevice()
+	{
+		cudaCheck(cudaMalloc((void**)&d_linspace,sizeof(Real)*nx_));
+		cudaCheck(cudaMemcpy(d_linspace,h_linspace,sizeof(Real)*nx_,cudaMemcpyHostToDevice));
 	}
 
 	
