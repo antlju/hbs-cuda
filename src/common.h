@@ -26,3 +26,4 @@ typedef bundleMesh<Real, 2> Bundle;
 #include "curl.h"
 #include "grad.h"
 #include "lapl.h"
+#include "div.h"

@@ -1,7 +1,7 @@
 #pragma once
-#include "constants.h"
+#include "constants.h" /// To get the RK3 coeffs
 
-/// Functions for 
+/// Functions for getting the proper RK3 coefficients.
 __device__
 Real rk_alpha(const Int k)
 {
@@ -37,6 +37,10 @@ Real rk_gamma(const Int k)
 	default: return 0.0;
 	}
 }
+
+
+/// *******************************************************************************************************
+
 
 /// Calculate u* = u+(2*dt*(alpha(k)/rho))*grad(p)+(dt*beta(k))*RHSk+(dt*gamma(k))*RHSk_1
 __global__
@@ -105,9 +109,10 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 			//Compute gradient of the pressure (scalar bundle -> vector pencil)
 			sgrad(pBndl,P,li,invdx,invdx,invdx);
 
+			
 			for (Int vi=0;vi<ustar.nvars_;vi++)
 			{
-				if (k_rk == 0) /// Optimise away access to rhsk_1 when gammak == 0.0.
+				if (k_rk == 1) /// Optimise away access to rhsk_1 when gammak == 0.0.
 				{
 					ustar(i,j,k,vi) = u(i,j,k,vi) + rhsk(i,j,k,vi)*(dt*betak)
 						- P[vi]*(2*alphak*dt/rho);
@@ -119,7 +124,7 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 				}
 			}
 			
-			
+	
 		}//End for loop over i.
 		
 	} //End j,k if statement
@@ -127,3 +132,82 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 	
 } //End calculate_uStar_kernel()
 
+
+/// *******************************************************************************************************
+
+
+/// Kernel to calculate the source term for Poisson eq: div(u*)*rho/(2*alpha^k*dt)
+__global__
+void calc_divergence_uStar_kernel(Mesh ustar, Mesh psi, SolverParams params, const Real dx, const Int k_rk)
+{
+	__shared__ Real ustar_smem[3*(NY_TILE+2*NG)*(NZ_TILE+2*NG)];
+	
+	Shared ustar_s(ustar_smem,NY_TILE,NZ_TILE,3,NG);
+	
+	/// Parameters
+	const Real rho = 1.0;//params.rho;
+	const Real dt = 0.01;
+
+	/// Set RK3 coefficients
+	const Real alphak = rk_alpha(k_rk);
+	
+	/// Finite difference coefficients.
+	/// A cubic grid is assumed such that dx = dy = dz.
+	const Real invdx = 1.0/dx;
+	//const Real invdx2 = invdx*invdx;
+	
+	/// Global indices (for whole array)
+	const Int j = threadIdx.x + blockIdx.x*blockDim.x;
+	const Int k = threadIdx.y + blockIdx.y*blockDim.y;
+	
+	/// Local indices (local to block)	
+	const Int lj = threadIdx.x;
+	const Int lk = threadIdx.y;
+	const Int li = 0; /// the "center" of the bundle (finite difference stencil) in any "roll step".
+	                  /// This will always be zero for any
+	                  /// global index i along the array.
+
+	/// Factor for multiplying div(u*)
+	const Real divu_fac = rho/(2*alphak*dt);
+
+	/// Bundle memory and Bundle pointer to that memory
+	Real vB[3*(4*NG+1)*(1+2*NG)];
+	Bundle ustarBndl(&vB[0],4*NG+1,3); /// Vector bundle
+	
+	/// Thread local scalar "pencil"
+	Real P[1];
+	
+	/// Initialise for rolling cache
+	for (Int vi=0;vi<ustar.nvars_;vi++)
+	{
+		bundleInit(ustarBndl,ustar,j,k,vi);
+	}
+	__syncthreads();
+
+	/// Loop over mesh
+	if (j < ustar.ny_ && k < ustar.nz_)
+	{
+		for (Int i=0;i<ustar.nx_;i++)
+		{
+			///Load shared memory and ghostpts
+			loadShared(ustar_s,ustar,i,j,k,lj,lk); //loadShared() def'd in shared.h
+			__syncthreads();
+			
+			/// *** ___ Roll the cache ! ___ ***
+			rollBundleCache(ustarBndl,ustar_s,lj,lk);
+
+			/// *** ____ Here comes the operations ! ___ ***
+			//Compute divergence of ustar (vector bundle -> scalar pencil)
+			divergence(ustarBndl,P,li,invdx,invdx,invdx);
+			/// Add to poisson solver input mesh (psi) with proper factor
+			psi(i,j,k,0) = P[0]*divu_fac;
+			
+		}//End for loop over i.
+		
+	} //End j,k if statement
+	
+	
+} //End calc_divergence_uStar_kernel()
+
+
+/// *******************************************************************************************************

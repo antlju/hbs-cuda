@@ -1,13 +1,18 @@
+/* 2 aug 2018, 15:45.
+Implemented divergence of ustar, this is hard to test w/o full solver implementation since divergence is zero out of the box. But it seems to give back numbers in a proper way (not sure if "correct" numbers).
+ */
+
+/* 2 aug 2018, 15:00.
+Implementation of RHSk copy, RHSk calc, uStar calc kernels. Don't know if they give the right numbers of course 
+but they don't give completely unreasonable numbers and everything compiles fine. cuda-memcheck gives no errors.
+ */
+
 #include "common.h"
 
 /// Include solver specific kernels
 #include "rhs_kernels.h"
 #include "ustar_kernels.h"
 
-/* 2 aug 2018, 15:00.
-Implementation of RHSk copy, RHSk calc, uStar calc kernels. Don't know if they give the right numbers of course 
-but they don't give completely unreasonable numbers and everything compiles fine. cuda-memcheck gives no errors.
- */
 
 /// Global instantiation of data classes.
 /// These can be passed to device kernels. They contain pointers to device memory.
@@ -15,8 +20,8 @@ Mesh uu(NX,NY,NZ,3); /// Velocity vector field.
 Mesh uStar(NX,NY,NZ,3); /// u*, step velocity vector field.
 Mesh RHSk(NX,NY,NZ,3); /// RHS^k Runge-Kutta substep vector field
 Mesh RHSk_1(NX,NY,NZ,3); /// RHS^(k-1) Runge-Kutta substep vector field
-Mesh pp(NX,NY,NZ,1); /// Pressure scalar field
-Mesh psi(NX,NY,NZ,1); /// \Psi scalar field
+Mesh Pp(NX,NY,NZ,1); /// Pressure scalar field
+Mesh Psi(NX,NY,NZ,1); /// \Psi scalar field
 Mesh gradPsi(NX,NY,NZ,3); /// \grad{\Psi} vector field.
 Mesh verify(NX,NY,NZ,3); /// Vector field to store analytic solution for verification.
 Grid grid(NX,NY,NZ,0,2*M_PI); ///
@@ -24,6 +29,7 @@ Grid grid(NX,NY,NZ,0,2*M_PI); ///
 Complex *fftComplex;
 Real *fftReal;
 
+/// GPU kernel call layout.
 dim3 ThreadsPerBlock(NY_TILE,NZ_TILE); 
 dim3 NoOfBlocks(NN/NY_TILE,NN/NZ_TILE);
 
@@ -55,8 +61,8 @@ Int main()
 	uStar.allocateDevice();
 	RHSk.allocateDevice();
 	RHSk_1.allocateDevice();
-	pp.allocateDevice();
-	psi.allocateDevice();
+	Pp.allocateDevice();
+	Psi.allocateDevice();
 	gradPsi.allocateDevice();
 	verify.allocateDevice();
 	verify.allocateHost();
@@ -86,13 +92,17 @@ Int main()
 	{
 		params.currentTimestep = timestep;
 		RungeKuttaStepping(uu,uStar,RHSk,RHSk_1,
-				   pp,psi,gradPsi,fftComplex,fftReal,
+				   Pp,Psi,gradPsi,fftComplex,fftReal,
 				   grid,params);
 	}
 
 	uStar.allocateHost();
 	uStar.copyFromDevice();
 	uStar.print();
+	
+	Psi.allocateHost();
+	Psi.copyFromDevice();
+	Psi.print();
 
        	/// Free device memory.
 	free_device_mem();
@@ -131,7 +141,9 @@ void RungeKuttaStepping(Mesh u, Mesh uStar, Mesh RHSk, Mesh RHSk_1,
 
 		/// Solve the Poisson equation for Psi.
 		apply_pbc(uStar);
-		//calc_divergence_uStar_kernel<<<,>>>(); ///Result is stored in the Psi array.
+		///Result from kernel below is stored in the Psi array for input to Poisson solver.
+		calc_divergence_uStar_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(uStar,Psi,params,grid.dx_,k_rk);
+
 		//Poisson_FFT_solver();
 
 		/// Update pressure and enforce solenoidal condition
@@ -157,8 +169,8 @@ void free_device_mem()
 	cudaCheck(cudaFree(uStar.d_data));
 	cudaCheck(cudaFree(RHSk.d_data));
 	cudaCheck(cudaFree(RHSk_1.d_data));
-	cudaCheck(cudaFree(pp.d_data));
-	cudaCheck(cudaFree(psi.d_data));
+	cudaCheck(cudaFree(Pp.d_data));
+	cudaCheck(cudaFree(Psi.d_data));
 	cudaCheck(cudaFree(gradPsi.d_data));
 	cudaCheck(cudaFree(verify.d_data));
 	cudaCheck(cudaFree(fftComplex));
