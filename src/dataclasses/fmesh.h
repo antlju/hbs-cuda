@@ -92,5 +92,28 @@ public:
                 }
         }
 
+	__host__ Real max()
+	{
+		Real max_new,max_old;
+		
+                for (size_t vi=0;vi<nvars_;vi++)
+                {
+                        for (size_t i=0;i<nx_;i++)
+                        {
+                                for (size_t j=0;j<ny_;j++)
+                                {
+                                        for (size_t k=0;k<nz_;k++)
+                                        {
+                                                max_new = fabs(h_data[ indx(i,j,k,vi)]);
+						if (max_new > max_old)
+							max_old = max_new;
+                                        }
+                                }
+
+                        }
+                }
+		return max_old;
+        }
+
 
 }; /// End class Mesh
