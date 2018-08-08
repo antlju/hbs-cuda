@@ -5,9 +5,10 @@
 class SolverParams {
 public:
         /// Time step size (to be updated according to CFL before each Runge-Kutta ingegration step).
-        Real dt; 
+        Real *h_dt; 
         Real dt_old; /// Previous step size
         Real dt_init;
+	Real *d_dt; /// Pointer to dt variable stored on device
         
         /// Max time steps.
         Int maxTimesteps;
@@ -33,4 +34,18 @@ public:
 	/// Characteristic velocity
 	Real Uchar;
 
+	__host__ void dt_copyFromDevice()
+	{
+		cudaCheck(
+			cudaMemcpy(h_dt,d_dt,sizeof(Real),cudaMemcpyDeviceToHost)
+			);
+	}
+	
+	__host__ void dt_copyToDevice()
+	{
+		cudaCheck(
+			cudaMemcpy(d_dt,h_dt,sizeof(Real),cudaMemcpyHostToDevice)
+			);
+	}
+	
 }; // End class SolverParams

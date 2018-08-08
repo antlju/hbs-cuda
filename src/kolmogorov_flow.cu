@@ -12,11 +12,12 @@ but they don't give completely unreasonable numbers and everything compiles fine
 
 #include "common.h"
 
-/// Include solver specific kernels
+/// Include kernels
 #include "rhs_kernels.h"
 #include "ustar_kernels.h"
 #include "pressure_gradpsi_solenoidal.h"
 #include "poisson_fft.h"
+#include "reductions.h"
 
 /// Global instantiation of data classes.
 /// These can be passed to device kernels. They contain pointers to device memory.
@@ -28,12 +29,17 @@ Mesh Pp(NX,NY,NZ,1); /// Pressure scalar field
 Mesh Psi(NX,NY,NZ,1); /// \Psi scalar field
 Mesh gradPsi(NX,NY,NZ,3); /// \grad{\Psi} vector field.
 Mesh verify(NX,NY,NZ,3); /// Vector field to store analytic solution for verification.
+Mesh uu_stats(NX,NY,NZ,3); //// Vector field to store statistics by reduction computations!
 Grid grid(NX,NY,NZ,0,2*M_PI); ///
 	
 Complex *fftComplex;
 Real *fftReal;
 
 Timer timer;
+
+SolverParams params;
+Real *d_umax;
+Real *h_umax;
 
 /// GPU kernel call layout.
 dim3 ThreadsPerBlock(NY_TILE,NZ_TILE); 
@@ -44,34 +50,12 @@ __host__ void copyMeshOnDevice(Mesh in, Mesh out);
 __host__ void launch_output();
 __host__ void free_device_mem();
 __host__ void apply_pbc(Mesh f);
+__host__ void update_timestep(SolverParams params, const Real dx, const Real umax);
 __host__ void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
-				 Mesh p, Mesh psi, Mesh gradpsi, Complex *fftcomplex, Real *fftreal,
+				 Mesh p, Mesh psi, Mesh gradpsi, Mesh stats,
+				 Complex *fftcomplex, Real *fftreal,
 				 Grid grid, SolverParams params,
 				 cufftHandle pland2z, cufftHandle planz2d);
-
-/*
-__host__ Real calc_max_uu(Mesh &u)
-{
-	Real max = 0.0;
-	Real val = 0.0;
-	for (Int i=0;u.nx_;i++)
-	{
-		for (Int j=0;u.ny_;j++)
-		{
-			for (Int k=0;k<u.nz_;k++)
-			{
-				for (Int vi=0;vi<u.nvars_;vi++)
-				{
-					val = u.h_data[u.indx(i,j,k,vi)];
-					if (fabs(val) > max)
-						max = fabs(val);
-				}
-			}     
-		}
-	}
-	return max;
-}
-*/
 
 /// main()
 Int main() 
@@ -97,6 +81,7 @@ Int main()
 	gradPsi.allocateDevice();
 	verify.allocateDevice();
 	verify.allocateHost();
+	uu_stats.allocateDevice();
 	
 	grid.setHostLinspace(); /// Allocates and sets host linspace (in this case equivalent to NumPy's np.linspace(0,2*Pi,NX))
 	grid.copyLinspaceToDevice(); /// Allocates device memory and copies from host
@@ -104,16 +89,23 @@ Int main()
 	cudaCheck(cudaMalloc((void**)&fftReal,sizeof(Real)*NX*NY*NZ));
 	cudaCheck(cudaMalloc((void**)&fftComplex,sizeof(Complex)*NX*NY*(NZ/2+1)));
 
+	/// Allocate single value variables on host and device
+	cudaCheck(cudaMallocHost(&params.h_dt,sizeof(Real)));
+	cudaCheck(cudaMalloc((void**)&params.d_dt,sizeof(Real)));
+	cudaCheck(cudaMalloc((void**)&d_umax,sizeof(Real)));
+	cudaCheck(cudaMallocHost(&h_umax,sizeof(Real)));
+
+	
 	/// -------------------------------------
 	/// Set up solver parameters. ::: This should probably be read from a file.
 	///---------------------------------------
-	SolverParams params;
 	params.maxTimesteps = 100;
 	params.currentTimestep = 0;
 	params.Uchar = 1.0/2;
 	params.viscosity = 1.0/10;
 	params.kf = 1.0; /// Kolmogorov frequency.
 
+	uu.allocateHost();
 	/// -------------------------------------
 	/// Run solver for the set maximum no. of timesteps.
 	///---------------------------------------
@@ -121,19 +113,21 @@ Int main()
 	{
 		params.currentTimestep = timestep;
 		RungeKuttaStepping(uu,uStar,RHSk,RHSk_1,
-				   Pp,Psi,gradPsi,fftComplex,fftReal,
+				   Pp,Psi,gradPsi,uu_stats,
+				   fftComplex,fftReal,
 				   grid,params,
 				   planD2Z,planZ2D);
 	}
 
 	std::cout << "Finished timestepping after " << params.maxTimesteps << " steps." << std::endl;
-	uu.allocateHost();
 	uu.copyFromDevice();
 	std::cout << "Maximum value of velocity field: " << uu.max() << "\n";
 	
 	timer.recordStop();
 	timer.sync();
 	timer.print();
+
+	
        	/// Free device memory.
 	free_device_mem();
 	CUFFT_CHECK(cufftDestroy(planD2Z));
@@ -144,15 +138,19 @@ Int main()
 /// Runge-Kutta stepping. Computes RK3 substeps from k=1 to k=3
 __host__
 void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
-			Mesh p, Mesh psi, Mesh gradpsi, Complex *fftcomplex, Real *fftreal,
-			Grid grid, SolverParams params,cufftHandle pland2z, cufftHandle planz2d)
-{  
+			Mesh p, Mesh psi, Mesh gradpsi, Mesh stats,
+			Complex *fftcomplex, Real *fftreal,
+			Grid grid, SolverParams params,
+			cufftHandle pland2z, cufftHandle planz2d)
+{
         /// From the previous step we have k=0 (time step n) data.
         /// We want to arrive at data for k=3 (time step n+1).
         /// (compare with Rosti & Brandt 2017)
 
+
 	for (Int k_rk = 1;k_rk<=3;k_rk++)
 	{
+		
 		/// First calculate RHSk = -D_j u_i u_j+(nu/rho)*Lapl(u))+force
                 /// Then calc. u* = u+(2*dt*(alpha(k)/rho))*grad(p)
                 ///                        +(dt*beta(k))*RHSk+(dt*gamma(k))*RHSk_1
@@ -164,6 +162,14 @@ void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
 		/// Apply PBCS to u and calculate RHS^k
 		apply_pbc(u);
 		calculate_RHSk_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,rhsk,grid,params);
+
+		// If k_rk == 1 update the timestep dt
+                if (k_rk == 1)
+		{
+			calc_max(u,
+			cudaCheck(cudaMemcpy(h_umax,stats.d_data[0],sizeof(Real),cudaMemcpyDeviceToHost));
+                        update_timestep(params,grid.dx_,h_umax[0]);
+		}
 
 		/// Calculate ustar
 		calculate_uStar_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,rhsk,rhsk_1,p,ustar,
@@ -184,7 +190,8 @@ void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
 		enforce_solenoidal_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,ustar,gradpsi,
 									  params,k_rk);	
 	}
-
+	//uu.copyFromDevice();
+	//std::cout << params.currentTimestep << ": " << uu.max() << std::endl;
 	
 }
 
@@ -209,6 +216,9 @@ void free_device_mem()
 	cudaCheck(cudaFree(verify.d_data));
 	cudaCheck(cudaFree(fftComplex));
 	cudaCheck(cudaFree(fftReal));
+	cudaCheck(cudaFree(params.d_dt));
+	cudaCheck(cudaFree(d_umax));
+	cudaCheck(cudaFree(uu_stats.d_data));
 }
 
 __host__
@@ -223,4 +233,29 @@ void
 copyMeshOnDevice(Mesh in, Mesh out)
 {
 	cudaCheck(cudaMemcpy(out.d_data,in.d_data,sizeof(Real)*in.totsize_,cudaMemcpyDeviceToDevice));
+}
+
+__host__
+void update_timestep(SolverParams params, const Real dx, const Real umax)
+{
+	if (params.currentTimestep !=1 )
+	{
+		Real c1=0.1;
+		Real c2=c1; //Courant numbers for advection and diffusion respectively
+
+		Real nu = params.viscosity,L=dx;
+        
+		//Factor of 1/3 since dx=dy=dz
+	
+		Real adv = (1.0/3)*c1*dx/umax;
+		Real diff = (1.0/3)*c2*pow(L,2)/nu;
+		//std::cout << "adv : " << adv << "\t diff: " << diff << std::endl;
+		//Set new time step size according to CFL condition
+		if (adv < diff)
+			params.h_dt[0] = adv;
+		else
+			params.h_dt[0] = diff;
+	}
+	std::cout << params.h_dt[0] << std::endl; /// Print for debug
+	params.dt_copyToDevice();
 }
