@@ -91,7 +91,7 @@ void enforce_solenoidal_kernel(Mesh u, Mesh ustar, Mesh gradpsi, SolverParams pa
 {
 	/// Parameters
 	const Real rho = 1.0;//params.rho;
-	const Real dt = 0.01;
+	const Real dt = params.h_dt[0];
 
 	/// RK3 coeffs and factor
 	const Real alphak = rk_alpha(k_rk);

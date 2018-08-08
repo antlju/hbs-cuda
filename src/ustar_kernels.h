@@ -18,7 +18,7 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 	
 	/// Parameters
 	const Real rho = 1.0;//params.rho;
-	const Real dt = 0.01;
+	const Real dt = params.h_dt[0];
 
 	/// Set RK3 coefficients
 	const Real alphak = rk_alpha(k_rk);
@@ -108,7 +108,7 @@ void calc_divergence_uStar_kernel(Mesh ustar, Mesh psi, SolverParams params, con
 	
 	/// Parameters
 	const Real rho = 1.0;//params.rho;
-	const Real dt = 0.01;
+	const Real dt = params.h_dt[0];
 
 	/// Set RK3 coefficients
 	const Real alphak = rk_alpha(k_rk);

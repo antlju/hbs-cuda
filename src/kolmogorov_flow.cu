@@ -61,7 +61,7 @@ __host__ void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
 Int main() 
 {
 	timer.createEvents();
-	timer.recordStart();
+
 	launch_output();
 	
 	/// Create cuFFT plans.
@@ -99,16 +99,27 @@ Int main()
 	/// -------------------------------------
 	/// Set up solver parameters. ::: This should probably be read from a file.
 	///---------------------------------------
-	params.maxTimesteps = 100;
+	params.maxTimesteps = 10;
 	params.currentTimestep = 0;
 	params.Uchar = 1.0/2;
 	params.viscosity = 1.0/10;
 	params.kf = 1.0; /// Kolmogorov frequency.
 
-	uu.allocateHost();
+	/// Set up initial timestep size based on forcing
+	Real forceabs,fmax = 0.0;
+	for (size_t i=0;i<NX;i++)
+	{
+		forceabs = fabs(sin(params.kf*grid.h_linspace[i]));
+		if (forceabs > fmax)
+			fmax = forceabs;
+	}
+	update_timestep(params,grid.dx_,fmax);
+	
+	
 	/// -------------------------------------
 	/// Run solver for the set maximum no. of timesteps.
 	///---------------------------------------
+	timer.recordStart();
 	for (Int timestep = 0;timestep<params.maxTimesteps;timestep++)
 	{
 		params.currentTimestep = timestep;
@@ -118,14 +129,16 @@ Int main()
 				   grid,params,
 				   planD2Z,planZ2D);
 	}
-
+	timer.recordStop();
+	timer.sync();
+	timer.print();
+	
+	uu.allocateHost();
 	std::cout << "Finished timestepping after " << params.maxTimesteps << " steps." << std::endl;
 	uu.copyFromDevice();
 	std::cout << "Maximum value of velocity field: " << uu.max() << "\n";
 	
-	timer.recordStop();
-	timer.sync();
-	timer.print();
+
 
 	
        	/// Free device memory.
@@ -166,8 +179,8 @@ void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
 		// If k_rk == 1 update the timestep dt
                 if (k_rk == 1)
 		{
-			calc_max(u,
-			cudaCheck(cudaMemcpy(h_umax,stats.d_data[0],sizeof(Real),cudaMemcpyDeviceToHost));
+			calc_max(u,stats);
+			cudaCheck(cudaMemcpy(h_umax,&stats.d_data[0],sizeof(Real),cudaMemcpyDeviceToHost));
                         update_timestep(params,grid.dx_,h_umax[0]);
 		}
 
@@ -238,6 +251,8 @@ copyMeshOnDevice(Mesh in, Mesh out)
 __host__
 void update_timestep(SolverParams params, const Real dx, const Real umax)
 {
+	//std::cout << umax << std::endl;
+	
 	if (params.currentTimestep !=1 )
 	{
 		Real c1=0.1;
@@ -255,7 +270,10 @@ void update_timestep(SolverParams params, const Real dx, const Real umax)
 			params.h_dt[0] = adv;
 		else
 			params.h_dt[0] = diff;
+
+		//std::cout << adv << " " << diff << std::endl; /// Print for debug
 	}
-	std::cout << params.h_dt[0] << std::endl; /// Print for debug
-	params.dt_copyToDevice();
+	
+	
+	//params.dt_copyToDevice();
 }

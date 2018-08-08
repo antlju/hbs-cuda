@@ -49,26 +49,6 @@ __global__ void deviceReduceMax_kernel(Real *in, Real *out, Int N)
 		out[blockIdx.x] = maxval;
 }
 
-
-__host__ void initHost(Mesh &f, const Grid &grid)
-{
-	Real *x = grid.h_linspace;
-	for (Int i=0;i<f.nx_;i++)
-	{
-		for (Int j=0;j<f.ny_;j++)
-		{
-			for (Int k=0;k<f.nz_;k++)
-			{
-				f.h_data[f.indx(i,j,k,0)] = sin(x[k])/2;
-			}
-		}
-	}
-
-	//f.h_data[f.indx(0,5,6,0)] = 64.0;
-	//f.h_data[f.indx(0,0,0,0)] = 3.0;
-	//f.h_data[f.indx(0,8,133,0)] = 1024;
-}
-
 __host__
 void calc_max(Mesh u, Mesh du)
 {
