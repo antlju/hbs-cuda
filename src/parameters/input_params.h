@@ -1,6 +1,6 @@
 #pragma once
 
-#define NN 256
+#define NN 128
 #define NX NN
 #define NY NN
 #define NZ NN

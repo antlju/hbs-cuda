@@ -14,7 +14,7 @@ public:
 	__host__ Grid(Real Nx, Real Ny, Real Nz, Real L0, Real L1) :
 		nx_(Nx),ny_(Ny),nz_(Nz),L0_(L0),L1_(L1)
 	{
-		dx_ = (L1-L0)/Nx;
+		dx_ = (L1-L0)/(Nx);
 		invdx_ = 1.0/dx_;
 		xlen = L1-L0;
 	}

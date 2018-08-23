@@ -90,7 +90,7 @@ __global__
 void enforce_solenoidal_kernel(Mesh u, Mesh ustar, Mesh gradpsi, SolverParams params, const Int k_rk)
 {
 	/// Parameters
-	const Real rho = 1.0;//params.rho;
+	const Real rho = params.rho;
 	const Real dt = params.h_dt[0];
 
 	/// RK3 coeffs and factor
@@ -105,10 +105,15 @@ void enforce_solenoidal_kernel(Mesh u, Mesh ustar, Mesh gradpsi, SolverParams pa
 	{
 		for (Int i=0;i<u.nx_;i++)
 		{
+			/*
 			for (Int vi=0;vi<u.nvars_;vi++)
 			{
-				u(i,j,k,vi) = ustar(i,j,k,vi)-gradpsi(i,j,k,vi)*gradfac;
+				//u(i,j,k,vi) = ustar(i,j,k,vi)-gradpsi(i,j,k,vi)*gradfac;
 			}
+			*/
+			u(i,j,k,0) = ustar(i,j,k,0);
+			u(i,j,k,1) = ustar(i,j,k,1);
+			u(i,j,k,2) = ustar(i,j,k,2);
 			
 		}
 		

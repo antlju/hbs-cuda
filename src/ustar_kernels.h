@@ -17,7 +17,7 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 	Shared p_s(p_smem,NY_TILE,NZ_TILE,1,NG);
 	
 	/// Parameters
-	const Real rho = 1.0;//params.rho;
+	const Real rho = params.rho;
 	const Real dt = params.h_dt[0];
 
 	/// Set RK3 coefficients
@@ -41,6 +41,13 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 	                  /// This will always be zero for any
 	                  /// global index i along the array.
 
+	/* DEBUGGING PRINT
+	if (j == 5 && k == 5)
+	{
+		printf("ustar dt: %f, rho: %f, alphak: %f, betak: %f, gammak: %f \n",dt, rho, alphak, betak, gammak);
+	}
+	*/
+	
 	/// Bundle memory and Bundle pointer to that memory
 	Real sB[1*(4*NG+1)*(1+2*NG)];
 	Bundle pBndl(&sB[0],4*NG+1,1); /// Scalar bundle
@@ -55,6 +62,8 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 	}
 	__syncthreads();
 
+	const Real rhskfac = (dt*betak),pnclfac = 2*alphak*dt/rho,rhsk_1fac = dt*gammak;
+	
 	/// Loop over mesh
 	if (j < u.ny_ && k < u.nz_)
 	{
@@ -71,7 +80,11 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 			//Compute gradient of the pressure (scalar bundle -> vector pencil)
 			sgrad(pBndl,P,li,invdx,invdx,invdx);
 
+			ustar(i,j,k,0) = u(i,j,k,0)+(rhsk(i,j,k,0)*rhskfac)+(rhsk_1(i,j,k,0)*rhsk_1fac)-(P[0]*pnclfac);
+			ustar(i,j,k,1) = u(i,j,k,1)+(rhsk(i,j,k,1)*rhskfac)+(rhsk_1(i,j,k,1)*rhsk_1fac)-(P[1]*pnclfac);
+			ustar(i,j,k,2) = u(i,j,k,2)+(rhsk(i,j,k,2)*rhskfac)+(rhsk_1(i,j,k,2)*rhsk_1fac)-(P[2]*pnclfac);
 			
+			/*
 			for (Int vi=0;vi<ustar.nvars_;vi++)
 			{
 				if (k_rk == 1) /// Optimise away access to rhsk_1 when gammak == 0.0.
@@ -85,7 +98,7 @@ void calculate_uStar_kernel(Mesh u, Mesh rhsk, Mesh rhsk_1, Mesh p, Mesh ustar,
 						+ rhsk_1(i,j,k,vi)*(dt*gammak) - P[vi]*(2*alphak*dt/rho);
 				}
 			}
-			
+			*/
 	
 		}//End for loop over i.
 		
@@ -107,12 +120,12 @@ void calc_divergence_uStar_kernel(Mesh ustar, Mesh psi, SolverParams params, con
 	Shared ustar_s(ustar_smem,NY_TILE,NZ_TILE,3,NG);
 	
 	/// Parameters
-	const Real rho = 1.0;//params.rho;
+	const Real rho = params.rho;
 	const Real dt = params.h_dt[0];
 
 	/// Set RK3 coefficients
 	const Real alphak = rk_alpha(k_rk);
-	
+
 	/// Finite difference coefficients.
 	/// A cubic grid is assumed such that dx = dy = dz.
 	const Real invdx = 1.0/dx;
@@ -129,6 +142,13 @@ void calc_divergence_uStar_kernel(Mesh ustar, Mesh psi, SolverParams params, con
 	                  /// This will always be zero for any
 	                  /// global index i along the array.
 
+	/* DEBUGGING PRINT
+	if (j == 5 && k == 5)
+	{
+		printf("div ustar dt: %f, rho: %f, alphak: %f \n",dt, rho, alphak);
+	}
+	*/
+	
 	/// Factor for multiplying div(u*)
 	const Real divu_fac = rho/(2*alphak*dt);
 

@@ -1,0 +1,17 @@
+PROBLEM: Can't reproduce CPU convergence to umax 0.5 for f0=1/40, N=128, nu=1/20.
+For these timestep settings GPU code diverges. For smaller timesteps the code oscillates ie doesn't come to steady state.
+
+#### Aug 9 
+
+ustar and divustar have the correct values for:
+dt, rho, alphak, betak, gammak (on proper rk substeps).
+
+I tried replacing ustar loop over vi and gammak optimisation: still diverges.
+
+
+Since our forcing is f= f0*sin(y) when we take the divergence of ustar we always get zero. Let us skip the whole pressure/psi/fft step and see what we get.
+
+I seem to have found the issue! Two things:
+1. I didn't factor in viscosity when calculating vlapl in RHSk kernel.
+2. I didn't _set_ the RHSk in the first calc (udotgradu) but rather I added it to the previous result -> divergence ofcourse!
+

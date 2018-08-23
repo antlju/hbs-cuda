@@ -92,6 +92,49 @@ public:
                 }
         }
 
+	__host__ void printfirstz()
+	{
+
+                for (size_t vi=0;vi<nvars_;vi++)
+                {
+                        std::cout << "========================" << std::endl;
+                        std::cout << "fmesh print (0,0,k) " << std::endl;
+                        std::cout << "========================" << std::endl;
+ 
+			for (size_t k=0;k<nz_;k++)
+			{
+				std::cout << h_data[ indx(0,0,k,vi)] << "\t";
+			}
+			std::cout << std::endl;
+                     
+			std::cout << "----------------------------" << std::endl;
+                       
+                        std::cout << std::endl;
+                }
+        }
+
+	__host__ void printfirsty()
+	{
+
+                for (size_t vi=0;vi<nvars_;vi++)
+                {
+                        std::cout << "========================" << std::endl;
+                        std::cout << "fmesh print (0,j,0) " << std::endl;
+                        std::cout << "========================" << std::endl;
+ 
+			for (size_t j=0;j<ny_;j++)
+			{
+				std::cout << h_data[ indx(0,j,0,vi)] << "\t";
+			}
+			std::cout << std::endl;
+                     
+			std::cout << "----------------------------" << std::endl;
+                       
+                        std::cout << std::endl;
+                }
+        }
+	
+
 	__host__ Real max()
 	{
 		Real max_new,max_old;

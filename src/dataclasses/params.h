@@ -14,7 +14,7 @@ public:
         Int maxTimesteps;
 
 	///
-	Int saveintrvl;
+	Int saveinterval;
 	
         ///current time step
         Int currentTimestep;
@@ -30,7 +30,7 @@ public:
 	Real mu;
         /// Kolmogorov frequency
         Real kf;
-
+	Real f0;
 	/// Characteristic velocity
 	Real Uchar;
 

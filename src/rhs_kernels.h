@@ -1,15 +1,17 @@
 #pragma once
 
 __device__
-void set_force(Real *P, const Int i, Grid grid, const Real kf)
+void set_force(Real *P, const Int i, Grid grid, const Real kf,const Real f0)
 {
-	Real Amp = 1.0;
 	Real *x = grid.d_linspace;
-	P[0] = Amp*sin(kf*x[i]);
+	//Real Amp = 1.0/40;
+	P[0] = f0*sin(kf*x[i]);
+	//P[0] = 1.0;
 	P[1] = 0.0;
 	P[2] = 0.0;
 }
 
+/*
 __global__
 void RHSk_copy_kernel(Mesh rhsk, Mesh rhsk_1)
 {
@@ -27,6 +29,7 @@ void RHSk_copy_kernel(Mesh rhsk, Mesh rhsk_1)
 		}
 	}
 }
+*/
 
 __global__
 void calculate_RHSk_kernel(Mesh u, Mesh rhsk, Grid grid, SolverParams params)
@@ -57,8 +60,12 @@ void calculate_RHSk_kernel(Mesh u, Mesh rhsk, Grid grid, SolverParams params)
 	Bundle Bndl(&vB[0],4*NG+1,3);
 	
 	/// Local vector "pencil"
-	Real P[3];
+	Real P1[3];
+	Real P2[3];
+	Real P3[3];
 	
+	const Real nu = params.viscosity;
+	//printf("nu : %f, 1/20: %f \n",nu,1.0/20);
 	/// Initialise for rolling cache
 	for (Int vi=0;vi<u.nvars_;vi++)
 	{
@@ -83,19 +90,20 @@ void calculate_RHSk_kernel(Mesh u, Mesh rhsk, Grid grid, SolverParams params)
 
 			/// *** ____ Here comes the operations ! ___ ***
 			/// Compute (u dot grad)u and store in P.
-			udotgradu(Bndl,P,li,invdx,invdx,invdx);
-			/// Add P to RHSk.
-			rhsk(i,j,k,0) += P[0]; rhsk(i,j,k,1) += P[1]; rhsk(i,j,k,2) += P[2];
-
+			udotgradu(Bndl,P1,li,invdx,invdx,invdx);
+			/// _Set_ P to RHSk. (So that we dont add to RHSk from prev step) 
+			rhsk(i,j,k,0) = P1[0]; rhsk(i,j,k,1) = P1[1]; rhsk(i,j,k,2) = P1[2];
+			
 			/// Compute vector laplacian and store in P.
-			vlapl(Bndl,P,li,invdx2,invdx2,invdx2);
+			vlapl(Bndl,P2,li,invdx*invdx,invdx*invdx,invdx*invdx);
 			/// Add P to RHSk.
-			rhsk(i,j,k,0) += P[0]; rhsk(i,j,k,1) += P[1]; rhsk(i,j,k,2) += P[2];
+			rhsk(i,j,k,0) += P2[0]*nu; rhsk(i,j,k,1) += P2[1]*nu; rhsk(i,j,k,2) += P2[2]*nu;
 
 			/// Compute force and store in P.
-			set_force(P,k,grid,params.kf);
+			set_force(P3,j,grid,params.kf,params.f0);
 			/// Add P to RHSk.
-			rhsk(i,j,k,0) += P[0]; rhsk(i,j,k,1) += P[1]; rhsk(i,j,k,2) += P[2];
+			rhsk(i,j,k,0) += P3[0]; rhsk(i,j,k,1) += P3[1]; rhsk(i,j,k,2) += P3[2];
+	
 
 		}//End for loop over i.
 		

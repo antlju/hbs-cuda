@@ -1,0 +1,70 @@
+Launching kolmogorov flow with cubic space size N^3 = NX*NY*NZ = 128^3.
+Tile sizes are 
+ X_TILE: 1,
+ Y_TILE: 16,
+ Z_TILE: 16.
+Max timesteps: 6000
+grid.dx_: 0.0490874 2*pi/128: 0.0490874
+Step: 0 umax: 0.000401434
+Step: 100 umax: 0.0389595
+Step: 200 umax: 0.0745418
+Step: 300 umax: 0.107378
+Step: 400 umax: 0.13768
+Step: 500 umax: 0.165643
+Step: 600 umax: 0.191448
+Step: 700 umax: 0.215261
+Step: 800 umax: 0.237237
+Step: 900 umax: 0.257517
+Step: 1000 umax: 0.276231
+Step: 1100 umax: 0.293501
+Step: 1200 umax: 0.309438
+Step: 1300 umax: 0.324145
+Step: 1400 umax: 0.337718
+Step: 1500 umax: 0.350242
+Step: 1600 umax: 0.3618
+Step: 1700 umax: 0.372466
+Step: 1800 umax: 0.382309
+Step: 1900 umax: 0.391392
+Step: 2000 umax: 0.399774
+Step: 2100 umax: 0.40751
+Step: 2200 umax: 0.414648
+Step: 2300 umax: 0.421235
+Step: 2400 umax: 0.427314
+Step: 2500 umax: 0.432924
+Step: 2600 umax: 0.438101
+Step: 2700 umax: 0.442878
+Step: 2800 umax: 0.447287
+Step: 2900 umax: 0.451355
+Step: 3000 umax: 0.455109
+Step: 3100 umax: 0.458574
+Step: 3200 umax: 0.461771
+Step: 3300 umax: 0.464721
+Step: 3400 umax: 0.467444
+Step: 3500 umax: 0.469957
+Step: 3600 umax: 0.472275
+Step: 3700 umax: 0.474415
+Step: 3800 umax: 0.47639
+Step: 3900 umax: 0.478212
+Step: 4000 umax: 0.479894
+Step: 4100 umax: 0.481445
+Step: 4200 umax: 0.482877
+Step: 4300 umax: 0.484199
+Step: 4400 umax: 0.485418
+Step: 4500 umax: 0.486544
+Step: 4600 umax: 0.487582
+Step: 4700 umax: 0.488541
+Step: 4800 umax: 0.489425
+Step: 4900 umax: 0.490241
+Step: 5000 umax: 0.490994
+Step: 5100 umax: 0.491689
+Step: 5200 umax: 0.492331
+Step: 5300 umax: 0.492923
+Step: 5400 umax: 0.493469
+Step: 5500 umax: 0.493973
+Step: 5600 umax: 0.494438
+Step: 5700 umax: 0.494867
+Step: 5800 umax: 0.495264
+Step: 5900 umax: 0.495629
+0.0327249 0.0160638
+Finished timestepping after 6000 steps.
+Time taken: 354000.0938 ms

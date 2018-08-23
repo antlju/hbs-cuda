@@ -1,0 +1,7 @@
+PROBLEM: Can't reproduce CPU convergence to umax 0.5 for f0=1/40, N=128, nu=1/20.
+For these timestep settings GPU code diverges. For smaller timesteps the code oscillates ie doesn't come to steady state.
+
+
+ustar and divustar have the correct values for:
+dt, rho, alphak, betak, gammak (on proper rk substeps).
+

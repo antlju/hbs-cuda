@@ -1,15 +1,3 @@
-/* 7 aug 2018, 13:09. 
-I have completed the solver and it seems to give a reasonable value for max(u) up to NN=32, but for larger sizes it diverges! Need to fix
-*/
-/* 2 aug 2018, 15:45.
-Implemented divergence of ustar, this is hard to test w/o full solver implementation since divergence is zero out of the box. But it seems to give back numbers in a proper way (not sure if "correct" numbers).
- */
-
-/* 2 aug 2018, 15:00.
-Implementation of RHSk copy, RHSk calc, uStar calc kernels. Don't know if they give the right numbers of course 
-but they don't give completely unreasonable numbers and everything compiles fine. cuda-memcheck gives no errors.
- */
-
 #include "common.h"
 
 /// Include kernels
@@ -99,13 +87,18 @@ Int main()
 	/// -------------------------------------
 	/// Set up solver parameters. ::: This should probably be read from a file.
 	///---------------------------------------
-	params.maxTimesteps = 10;
+	params.maxTimesteps = 6000;
 	std::cout << "Max timesteps: " << params.maxTimesteps << std::endl;
 	params.currentTimestep = 0;
 	params.Uchar = 1.0/2;
-	params.viscosity = 1.0/10;
+	params.rho = 1.0;
+	params.viscosity = 1.0/20;
 	params.kf = 1.0; /// Kolmogorov frequency.
+	params.f0 = 1.0/40;
+	//params.h_dt[0] = 0.001;
+	params.saveinterval = 100;
 
+	/*
 	/// Set up initial timestep size based on forcing
 	Real forceabs,fmax = 0.0;
 	for (size_t i=0;i<NX;i++)
@@ -114,9 +107,14 @@ Int main()
 		if (forceabs > fmax)
 			fmax = forceabs;
 	}
-	update_timestep(params,grid.dx_,fmax);
+	*/
+	update_timestep(params,grid.dx_,params.Uchar);
 	
 	
+	uu.allocateHost();
+	uStar.allocateHost();
+	RHSk.allocateHost();
+	std::cout << "grid.dx_: " << grid.dx_ << " 2*pi/128: " << 2*M_PI/128 << std::endl;
 	/// -------------------------------------
 	/// Run solver for the set maximum no. of timesteps.
 	///---------------------------------------
@@ -129,15 +127,26 @@ Int main()
 				   fftComplex,fftReal,
 				   grid,params,
 				   planD2Z,planZ2D);
+
+		//Pp.copyFromDevice();
+		//Psi.copyFromDevice();
+		
+		if(timestep % params.saveinterval == 0)
+		{
+			uu.copyFromDevice();
+			std::cout << "Step: " << timestep << " umax: " << uu.max() << "\n";
+			//std::cout << "Step: " << timestep << " pmax: " << Pp.max() << "\n";
+			//std::cout << "Step: " << timestep << " psimax: " << Psi.max() << "\n";
+		}
+	       
 	}
 	timer.recordStop();
 	timer.sync();
+	std::cout << "Finished timestepping after " << params.maxTimesteps << " steps." << std::endl;
 	timer.print();
 	
-	uu.allocateHost();
-	std::cout << "Finished timestepping after " << params.maxTimesteps << " steps." << std::endl;
-	uu.copyFromDevice();
-	std::cout << "Maximum value of velocity field: " << uu.max() << "\n";
+	//uu.printfirsty();
+	//std::cout << "Maximum value of velocity field: " << uu.max() << "\n";
 	
 
 
@@ -176,33 +185,44 @@ void RungeKuttaStepping(Mesh u, Mesh ustar, Mesh rhsk, Mesh rhsk_1,
 		/// Apply PBCS to u and calculate RHS^k
 		apply_pbc(u);
 		calculate_RHSk_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,rhsk,grid,params);
-
+		//rhsk.copyFromDevice();
+		
+		//std::cout << "Tstep: " << params.currentTimestep << " k_rk: " << k_rk << " rhsk max: " << rhsk.max() << std::endl;
 		// If k_rk == 1 update the timestep dt
-                if (k_rk == 1)
+                if (k_rk == 1 && params.currentTimestep > 1)
 		{
-			calc_max(u,stats);
-			cudaCheck(cudaMemcpy(h_umax,&stats.d_data[0],sizeof(Real),cudaMemcpyDeviceToHost));
+			//calc_max(u,stats);
+			//cudaCheck(cudaMemcpy(h_umax,&stats.d_data[0],sizeof(Real),cudaMemcpyDeviceToHost));
                         update_timestep(params,grid.dx_,h_umax[0]);
 		}
-
+		
+		
 		/// Calculate ustar
 		calculate_uStar_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,rhsk,rhsk_1,p,ustar,
-					      params,grid.dx_,k_rk);
-
+						       params,grid.dx_,k_rk);
+		copyMeshOnDevice(ustar,u);
+		
 		/// Solve the Poisson equation for Psi.
-		apply_pbc(ustar);
+		//apply_pbc(ustar);
+		//ustar.copyFromDevice();
+		//std::cout << "printing ustar: " << std::endl;
+		//ustar.print();
 		///Result from kernel below is stored in the Psi array for input to Poisson solver.
-		calc_divergence_uStar_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(ustar,psi,
-									     params,grid.dx_,k_rk);
-
-		Poisson_FFT_solver(psi,fftcomplex,fftreal,grid.xlen,k_rk,pland2z,planz2d);
+		//calc_divergence_uStar_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(ustar,psi,
+		//						     params,grid.dx_,k_rk);
+	//psi.copyFromDevice();
+	//std::cout << "printing psi: " << std::endl;
+	//psi.print();
+	//Poisson_FFT_solver(psi,fftcomplex,fftreal,grid.xlen,k_rk,pland2z,planz2d);
 		
                 /// Update pressure, calculate gradient of psi to enforce solenoidal condition
-		update_pressure_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(p,psi);
-		apply_pbc(psi);
-		calc_gradpsi_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(psi,gradpsi,grid.dx_);
-		enforce_solenoidal_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,ustar,gradpsi,
-									  params,k_rk);	
+		//update_pressure_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(p,psi);
+		//apply_pbc(psi);
+		//calc_gradpsi_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(psi,gradpsi,grid.dx_);
+		//enforce_solenoidal_kernel<<<NoOfBlocks,ThreadsPerBlock>>>(u,ustar,gradpsi,
+		//							  params,k_rk);
+		//copyMeshOnDevice(rhsk, u);
+		
 	}
 	//uu.copyFromDevice();
 	//std::cout << params.currentTimestep << ": " << uu.max() << std::endl;
@@ -252,28 +272,30 @@ copyMeshOnDevice(Mesh in, Mesh out)
 __host__
 void update_timestep(SolverParams params, const Real dx, const Real umax)
 {
+	
 	//std::cout << umax << std::endl;
 	
-	if (params.currentTimestep !=1 )
-	{
-		Real c1=0.1;
-		Real c2=c1; //Courant numbers for advection and diffusion respectively
-
-		Real nu = params.viscosity,L=dx;
-        
-		//Factor of 1/3 since dx=dy=dz
+	Real c1=1.0/3;
+	Real c2=c1; //Courant numbers for advection and diffusion respectively
 	
-		Real adv = (1.0/3)*c1*dx/umax;
-		Real diff = (1.0/3)*c2*pow(L,2)/nu;
-		//std::cout << "adv : " << adv << "\t diff: " << diff << std::endl;
-		//Set new time step size according to CFL condition
-		if (adv < diff)
-			params.h_dt[0] = adv;
-		else
-			params.h_dt[0] = diff;
+	Real nu = params.viscosity,L=dx;
+        Real UU;
+	//Factor of 1/3 since dx=dy=dz
 
-		//std::cout << adv << " " << diff << std::endl; /// Print for debug
-	}
+	UU = params.Uchar;
+	Real adv = c1*dx/UU;
+	Real diff = c2*pow(L,2)/nu;
+	//std::cout << "adv : " << adv << "\t diff: " << diff << std::endl;
+	//Set new time step size according to CFL condition
+	if (adv < diff)
+		params.h_dt[0] = adv;
+	else
+		params.h_dt[0] = diff;
+
+	if (params.currentTimestep == params.maxTimesteps-1)
+		std::cout << adv << " " << diff << std::endl; /// Print for debug
+	
+	//params.h_dt[0] = 0.00001;
 	
 	
 	//params.dt_copyToDevice();

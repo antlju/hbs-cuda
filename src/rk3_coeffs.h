@@ -2,6 +2,7 @@
 #include "constants.h"
 
 /// Functions for getting the proper RK3 coefficients.
+
 __device__
 Real rk_alpha(const Int k)
 {
