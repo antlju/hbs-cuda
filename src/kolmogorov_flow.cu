@@ -87,7 +87,7 @@ Int main()
 	/// -------------------------------------
 	/// Set up solver parameters. ::: This should probably be read from a file.
 	///---------------------------------------
-	params.maxTimesteps = 6000;
+	params.maxTimesteps = 12000;
 	std::cout << "Max timesteps: " << params.maxTimesteps << std::endl;
 	params.currentTimestep = 0;
 	params.Uchar = 1.0/2;
